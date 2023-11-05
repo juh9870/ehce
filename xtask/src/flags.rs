@@ -6,5 +6,7 @@ xflags::xflags! {
         cmd dev {}
         /// Runs a code watcher
         cmd watch {}
+        /// Runs all configured linters
+        cmd fix {}
     }
 }
