@@ -1,0 +1,142 @@
+use std::borrow::Borrow;
+use std::hash::{BuildHasher, BuildHasherDefault, Hash};
+use std::marker::PhantomData;
+use std::ops::{Index, IndexMut};
+
+use bimap::BiHashMap;
+use nohash_hasher::NoHashHasher;
+use serde::Deserializer;
+use slab::Slab;
+
+#[derive(Debug, Copy, Clone)]
+pub struct SlabMapId<V>(usize, PhantomData<V>);
+
+impl<V> SlabMapId<V> {
+    fn new(id: usize) -> Self {
+        Self(id, Default::default())
+    }
+
+    pub fn raw(&self) -> usize {
+        self.0
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum SlabMapKeyOrId<K, V> {
+    Id(SlabMapId<V>),
+    Key(K),
+}
+
+impl<K, V> From<SlabMapId<V>> for SlabMapKeyOrId<K, V> {
+    fn from(value: SlabMapId<V>) -> Self {
+        SlabMapKeyOrId::Id(value)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SlabMap<K: Eq + Hash, V, Hasher: BuildHasher = BuildHasherDefault<rustc_hash::FxHasher>>
+{
+    items: Slab<V>,
+    keys: BiHashMap<K, usize, Hasher, BuildHasherDefault<NoHashHasher<usize>>>,
+}
+
+impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
+    pub fn insert(&mut self, key: K, value: V) -> (SlabMapId<V>, Option<V>) {
+        match self.keys.get_by_left(&key) {
+            None => {
+                let id = self.items.insert(value);
+                self.keys.insert(key, id);
+
+                (SlabMapId::new(id), None)
+            }
+            Some(id) => {
+                let mut old = value;
+                std::mem::swap(&mut self.items[*id], &mut old);
+                (SlabMapId::new(*id), Some(old))
+            }
+        }
+    }
+
+    pub fn get_by_id(&self, id: SlabMapId<V>) -> &V {
+        &self.items[id.0]
+    }
+
+    pub fn get_by_id_mut(&mut self, id: SlabMapId<V>) -> &mut V {
+        &mut self.items[id.0]
+    }
+
+    pub fn get_by_raw(&self, id: usize) -> Option<&V> {
+        self.items.get(id)
+    }
+
+    pub fn get_by_raw_mut(&mut self, id: usize) -> Option<&mut V> {
+        self.items.get_mut(id)
+    }
+
+    pub fn get_by_key(&self, key: &K) -> Option<&V> {
+        self.keys.get_by_left(key).and_then(|e| self.get_by_raw(*e))
+    }
+
+    pub fn get_by_key_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.keys
+            .get_by_left(key)
+            .copied()
+            .and_then(|e| self.get_by_raw_mut(e))
+    }
+
+    pub fn get<Q: Borrow<K>>(&self, k: SlabMapKeyOrId<Q, V>) -> Option<&V> {
+        match k {
+            SlabMapKeyOrId::Id(id) => Some(self.get_by_id(id)),
+            SlabMapKeyOrId::Key(key) => self.get_by_key(key.borrow()),
+        }
+    }
+
+    pub fn get_mut<Q: Borrow<K>>(&mut self, k: SlabMapKeyOrId<Q, V>) -> Option<&mut V> {
+        match k {
+            SlabMapKeyOrId::Id(id) => Some(self.get_by_id_mut(id)),
+            SlabMapKeyOrId::Key(key) => self.get_by_key_mut(key.borrow()),
+        }
+    }
+
+    pub fn key_to_id<Q: Borrow<K>>(&self, key: Q) -> Option<SlabMapId<V>> {
+        self.keys
+            .get_by_left(key.borrow())
+            .map(|e| SlabMapId::new(*e))
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.items.iter().map(|e| e.1)
+    }
+}
+
+impl<K: Eq + Hash, V, Hasher: BuildHasher> Index<SlabMapId<V>> for SlabMap<K, V, Hasher> {
+    type Output = V;
+
+    fn index(&self, index: SlabMapId<V>) -> &Self::Output {
+        self.get_by_id(index)
+    }
+}
+
+impl<K: Eq + Hash, V, Hasher: BuildHasher> IndexMut<SlabMapId<V>> for SlabMap<K, V, Hasher> {
+    fn index_mut(&mut self, index: SlabMapId<V>) -> &mut Self::Output {
+        self.get_by_id_mut(index)
+    }
+}
+
+impl<K: Eq + Hash, V, Hasher: BuildHasher + Default> Default for SlabMap<K, V, Hasher> {
+    fn default() -> Self {
+        Self {
+            items: Default::default(),
+            keys: Default::default(),
+        }
+    }
+}
+
+impl<'de, K: serde::Deserialize<'de>, V> serde::Deserialize<'de> for SlabMapKeyOrId<K, V> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        K::deserialize(deserializer).map(|k| Self::Key(k))
+    }
+}

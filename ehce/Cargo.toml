@@ -5,6 +5,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+combat = { path = "../combat" }
+ehce_core = { path = "../ehce_core" }
+#accrete = "0.2"
 
 [dependencies.bevy]
 workspace = true
@@ -14,7 +17,10 @@ features = [
     "bevy_core_pipeline",
     "bevy_winit",
     "multi-threaded",
-    "android_shared_stdcxx"
+    "android_shared_stdcxx",
+    "asset_processor",
+    "basis-universal",
+    "file_watcher"
 ]
 
 [target.'cfg(target_family = "unix")'.dependencies.bevy]

@@ -1,0 +1,12 @@
+(
+    meta_format_version: "1.0",
+    processed_info: Some((
+        hash: (162, 211, 39, 218, 225, 206, 19, 217, 236, 65, 102, 217, 23, 245, 206, 251, 29, 129, 105, 145, 26, 217, 201, 48, 124, 147, 177, 239, 76, 41, 167, 183),
+        full_hash: (162, 211, 39, 218, 225, 206, 19, 217, 236, 65, 102, 217, 23, 245, 206, 251, 29, 129, 105, 145, 26, 217, 201, 48, 124, 147, 177, 239, 76, 41, 167, 183),
+        process_dependencies: [],
+    )),
+    asset: Load(
+        loader: "ehce_core::json5_asset_plugin::JsonAssetLoader<ehce_core::mods::model::DatabaseAsset>",
+        settings: (),
+    ),
+)

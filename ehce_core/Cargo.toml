@@ -1,0 +1,16 @@
+[package]
+name = "ehce_core"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { workspace = true, default-features = false, features = ["png", "jpeg", "bevy_asset", "async-io"] }
+camino = { workspace = true }
+miette = { workspace = true }
+rustc-hash = { workspace = true }
+serde = { workspace = true }
+serde_json5 = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+utils = { path = "../utils" }
