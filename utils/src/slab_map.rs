@@ -36,6 +36,14 @@ impl SlabMapUntypedId {
     pub fn raw(&self) -> usize {
         self.0
     }
+
+    /// Performs unchecked conversion into a typed slab map ID
+    ///
+    /// Indexing directly with a resulting ID might lead to panics if the
+    /// original ID did not belong to the indexed SlabMap
+    pub fn as_typed_unchecked<T>(&self) -> SlabMapId<T> {
+        SlabMapId::new(self.0)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

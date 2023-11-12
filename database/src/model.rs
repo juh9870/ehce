@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use utils::slab_map::{SlabMap, SlabMapId, SlabMapKeyOrUntypedId, SlabMapUntypedId};
 
-mod ship;
+pub mod ship;
 
 #[derive(Debug, serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath)]
 #[serde(transparent)]
@@ -243,4 +243,11 @@ macro_rules! registry {
     };
 }
 
-registry!(ship: ship::Ship);
+#[macro_export]
+macro_rules! call_with_all_models {
+    ($macro_name:ident) => {
+        $macro_name!(ship: $crate::model::ship::Ship);
+    };
+}
+
+call_with_all_models!(registry);

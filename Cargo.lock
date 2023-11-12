@@ -1539,6 +1539,7 @@ dependencies = [
  "camino",
  "database",
  "miette",
+ "paste",
  "rustc-hash",
  "serde",
  "serde_json5",

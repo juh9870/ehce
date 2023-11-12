@@ -32,7 +32,7 @@ fn init_tick(
     if let Some(data) = loaded.drain().last() {
         info!("Mod is loaded, switching to combat state");
         commands.insert_resource(data.0);
-        state.set(GameState::Combat);
         mod_state.set(ModState::Ready);
+        state.set(GameState::Combat);
     }
 }

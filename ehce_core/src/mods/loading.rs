@@ -1,15 +1,20 @@
 use bevy::asset::{AssetPath, LoadState, LoadedFolder, UntypedAssetId};
 use bevy::core::FrameCount;
-
 use bevy::prelude::*;
 use camino::{Utf8Path, Utf8PathBuf};
-use database::model::{DatabaseAsset, DatabaseItemTrait, ModRegistry, RegistryId};
+use database::call_with_all_models;
 use miette::{IntoDiagnostic, WrapErr};
 use rustc_hash::FxHashSet;
 
+use database::model::{
+    DatabaseAsset, DatabaseItemKind, DatabaseItemTrait, ModRegistry, RegistryId,
+};
 use utils::FxBiHashMap;
 
-use crate::mods::{ModData, ModLoadErrorEvent, ModLoadedEvent, ModState, WantLoadModEvent};
+use crate::mods::{
+    ModData, ModHotReloadEvent, ModLoadErrorEvent, ModLoadedEvent, ModState,
+    ModUntypedHotReloadEvent, WantLoadModEvent,
+};
 use crate::{report_error, SimpleStateObjectPlugin};
 
 pub fn load_last_mod(mut evt: EventWriter<WantLoadModEvent>) {
@@ -21,13 +26,16 @@ pub struct ModLoadingPlugin;
 
 impl Plugin for ModLoadingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SimpleStateObjectPlugin::<_, LoadingStateData>::new(
-            ModState::Loading,
+        app.add_plugins((
+            SimpleStateObjectPlugin::<_, LoadingStateData>::new(ModState::Loading),
+            TypedHotReloadEventsPlugin,
         ))
         .add_systems(Update, mod_load)
         .add_systems(Update, loader.run_if(in_state(ModState::Loading)))
+        .add_systems(OnExit(ModState::Loading), clear_hot_reload_events)
         .add_systems(Update, hot_reload.run_if(in_state(ModState::Ready)))
-        .add_systems(Update, asset_tracer.before(hot_reload));
+        .add_systems(Update, asset_tracer.before(hot_reload))
+        .add_systems(Update, hot_reload_events.after(hot_reload));
     }
 }
 
@@ -180,6 +188,7 @@ fn asset_tracer(
 
 fn hot_reload(
     mut evt: EventReader<AssetEvent<DatabaseAsset>>,
+    mut hot_reload_event: EventWriter<InternalHotReloadEvent>,
     asset: Res<Assets<DatabaseAsset>>,
     asset_server: Res<AssetServer>,
     mut loaded_mod: ResMut<ModData>,
@@ -243,16 +252,17 @@ fn hot_reload(
                     }
                     // New asset is added, resulting in no collisions
                     (Action::Add, None, None) => {
-                        // New item, assets update is required
                         info!(id, %path, "Hot reloaded item (new)");
+                        // New item, assets update is required
                         loaded_mod.assets.insert(path, new_id);
+                        hot_reload_event.send(InternalHotReloadEvent::Single(new_id));
                     }
                     // Asset is updated, keeping the same ID and only conflicting with itself
                     (Action::Update, Some(old_id), Some((conflict, _)))
                         if old_id == &new_id && conflict == &path =>
                     {
                         info!(id, %path, "Hot reloaded item (updated)");
-                        // Do nothing, assets mapping is already up-to-date
+                        hot_reload_event.send(InternalHotReloadEvent::Single(new_id));
                     }
                     // Asset is updated, but ID got changed, trigger full reload
                     (Action::Update, Some(_), _) => {
@@ -267,6 +277,64 @@ fn hot_reload(
             }
         }
     }
+}
+
+macro_rules! typed_events {
+    ($($name:ident: $ty:ty),*) => {
+        #[derive(Debug)]
+        struct TypedHotReloadEventsPlugin;
+
+        impl Plugin for TypedHotReloadEventsPlugin {
+            fn build(&self, app: &mut App) {
+                app.init_resource::<Events<InternalHotReloadEvent>>();
+                app.init_resource::<Events<ModUntypedHotReloadEvent>>();
+                $(app.init_resource::<Events<ModHotReloadEvent<$ty>>>();)*
+            }
+        }
+
+        fn hot_reload_events(
+            mut evt: EventReader<InternalHotReloadEvent>,
+            mut untyped_event: EventWriter<ModUntypedHotReloadEvent>,
+            $(mut $name: EventWriter<ModHotReloadEvent<$ty>>,)*
+        ) {
+            for evt in evt.read() {
+                match evt {
+                    InternalHotReloadEvent::Full => {
+                        untyped_event.send(ModUntypedHotReloadEvent::Full);
+                        $($name.send(ModHotReloadEvent::Full);)*
+                    }
+                    InternalHotReloadEvent::Single(id) => {
+                        untyped_event.send(ModUntypedHotReloadEvent::Single(*id));
+                        paste::paste! {
+                            match id.kind() {
+                                $(
+                                    DatabaseItemKind::[<$name:camel>] => {
+                                        $name.send(ModHotReloadEvent::Single(id.id().as_typed_unchecked()));
+                                    }
+                                )*
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fn clear_hot_reload_events(
+            mut untyped_event: ResMut<Events<ModUntypedHotReloadEvent>>,
+            $(mut $name: ResMut<Events<ModHotReloadEvent<$ty>>>,)*
+        ) {
+            untyped_event.clear();
+            $($name.clear();)*
+        }
+    };
+}
+
+call_with_all_models!(typed_events);
+
+#[derive(Debug, Event)]
+pub enum InternalHotReloadEvent {
+    Full,
+    Single(RegistryId),
 }
 
 fn construct_mod<'a>(
