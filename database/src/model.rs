@@ -37,22 +37,46 @@ pub trait DatabaseItemTrait: Sized {
     fn deserialize(
         self,
         registry: &mut ModRegistry,
-    ) -> Result<(SlabMapUntypedId, Option<DatabaseItem>), ModItemValidationError>;
+    ) -> Result<(RegistryId, Option<DatabaseItem>), ModItemValidationError>;
     fn kind(&self) -> DatabaseItemKind;
 }
 
 pub type ItemId = String;
 pub type ModelStore<T> = SlabMap<ItemId, T>;
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct RegistryId {
+    kind: DatabaseItemKind,
+    id: SlabMapUntypedId,
+}
+
+impl RegistryId {
+    pub fn kind(&self) -> DatabaseItemKind {
+        self.kind
+    }
+    pub fn id(&self) -> SlabMapUntypedId {
+        self.id
+    }
+}
+
 #[derive(Debug, Clone)]
-pub struct RegistryId<T: Borrow<ItemId>> {
+pub struct RegistryKeyOrId<T: Borrow<ItemId>> {
     kind: DatabaseItemKind,
     id: SlabMapKeyOrUntypedId<T>,
 }
 
-impl RegistryId<&ItemId> {
-    pub fn cloned(self) -> RegistryId<ItemId> {
-        RegistryId::<ItemId> {
+impl<T: Borrow<ItemId>> RegistryKeyOrId<T> {
+    pub fn kind(&self) -> DatabaseItemKind {
+        self.kind
+    }
+    pub fn id(&self) -> &SlabMapKeyOrUntypedId<T> {
+        &self.id
+    }
+}
+
+impl RegistryKeyOrId<&ItemId> {
+    pub fn cloned(self) -> RegistryKeyOrId<ItemId> {
+        RegistryKeyOrId::<ItemId> {
             kind: self.kind,
             id: match self.id {
                 SlabMapKeyOrUntypedId::Key(key) => SlabMapKeyOrUntypedId::Key(key.to_string()),
@@ -63,8 +87,8 @@ impl RegistryId<&ItemId> {
 }
 
 impl DatabaseItem {
-    pub fn registry_id(&self) -> RegistryId<&ItemId> {
-        RegistryId {
+    pub fn registry_id(&self) -> RegistryKeyOrId<&ItemId> {
+        RegistryKeyOrId {
             kind: self.kind(),
             id: SlabMapKeyOrUntypedId::Key(self.id()),
         }
@@ -72,12 +96,21 @@ impl DatabaseItem {
 }
 
 impl<'a> DatabaseItemRef<'a> {
-    pub fn registry_id(&self) -> RegistryId<&ItemId> {
-        RegistryId {
+    pub fn registry_id(&self) -> RegistryKeyOrId<&ItemId> {
+        RegistryKeyOrId {
             kind: self.kind(),
             id: SlabMapKeyOrUntypedId::Key(self.id()),
         }
     }
+}
+
+#[derive(Debug, Error, Diagnostic)]
+enum RegistryInsertionError {
+    #[error("Key and value kinds mismatch. Key: {:?}, Value: {:?}", .key, .value)]
+    KindMismatch {
+        key: DatabaseItemKind,
+        value: DatabaseItemKind,
+    },
 }
 
 macro_rules! registry {
@@ -103,7 +136,7 @@ macro_rules! registry {
                     }
                 }
 
-                fn deserialize(self, registry: &mut ModRegistry) -> Result<(SlabMapUntypedId, Option<DatabaseItem>), ModItemValidationError> {
+                fn deserialize(self, registry: &mut ModRegistry) -> Result<(RegistryId, Option<DatabaseItem>), ModItemValidationError> {
                     match self {
                         $(
                             Self::[<$name:camel>](s) => s.deserialize(registry),
@@ -154,11 +187,19 @@ macro_rules! registry {
             )*
 
             $(
-                impl From<SlabMapId<$ty>> for RegistryId<ItemId> {
-                    fn from(item: SlabMapId<$ty>) -> RegistryId<ItemId> {
-                        RegistryId {
+                impl From<SlabMapId<$ty>> for RegistryKeyOrId<ItemId> {
+                    fn from(item: SlabMapId<$ty>) -> RegistryKeyOrId<ItemId> {
+                        RegistryKeyOrId {
                             kind: DatabaseItemKind::[<$name:camel>],
                             id: SlabMapKeyOrUntypedId::Id(item.as_untyped()),
+                        }
+                    }
+                }
+                impl From<SlabMapId<$ty>> for RegistryId {
+                    fn from(item: SlabMapId<$ty>) -> RegistryId {
+                        RegistryId {
+                            kind: DatabaseItemKind::[<$name:camel>],
+                            id: item.as_untyped(),
                         }
                     }
                 }
@@ -172,10 +213,28 @@ macro_rules! registry {
             }
 
             impl ModRegistry {
-                pub fn get_item<'key, 'reg, T: Borrow<ItemId> + 'key>(&self, id: RegistryId<T>) -> Option<DatabaseItemRef> {
+                pub fn get<T: Borrow<ItemId>>(&self, id: RegistryKeyOrId<T>) -> Option<DatabaseItemRef> {
                     match id.kind {
                         $(
                             DatabaseItemKind::[<$name:camel>] => self.[<$name s>].get_by_untyped(id.id).map(DatabaseItemRef::from),
+                        )*
+                    }
+                }
+                pub fn get_by_id(&self, id: RegistryId) -> Option<DatabaseItemRef> {
+                    match id.kind {
+                        $(
+                            DatabaseItemKind::[<$name:camel>] => self.[<$name s>].get_by_untyped_id(id.id).map(DatabaseItemRef::from),
+                        )*
+                    }
+                }
+
+                pub fn insert(&mut self, item: DatabaseItem) -> (RegistryId, Option<DatabaseItem>) {
+                    match item {
+                        $(
+                            DatabaseItem::[<$name:camel>](item) => {
+                                let (id, item) = self.[<$name s>].insert(item.id().clone(), item);
+                                (id.into(), item.map(DatabaseItem::[<$name:camel>]))
+                            },
                         )*
                     }
                 }

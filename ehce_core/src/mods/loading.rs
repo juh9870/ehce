@@ -3,11 +3,10 @@ use bevy::core::FrameCount;
 
 use bevy::prelude::*;
 use camino::{Utf8Path, Utf8PathBuf};
-use database::model::{DatabaseAsset, DatabaseItemTrait, ModRegistry};
+use database::model::{DatabaseAsset, DatabaseItemTrait, ModRegistry, RegistryId};
 use miette::{IntoDiagnostic, WrapErr};
 use rustc_hash::FxHashSet;
 
-use utils::slab_map::SlabMapUntypedId;
 use utils::FxBiHashMap;
 
 use crate::mods::{ModData, ModLoadErrorEvent, ModLoadedEvent, ModState, WantLoadModEvent};
@@ -190,31 +189,83 @@ fn hot_reload(
         Update,
     }
     for evt in evt.read() {
-        let (id, _action) = match evt {
+        let (asset_id, action) = match evt {
             AssetEvent::Added { id } => (id, Action::Add),
             AssetEvent::Modified { id } => (id, Action::Update),
             AssetEvent::Removed { .. } => continue,
             AssetEvent::LoadedWithDependencies { .. } => continue,
         };
-        let Some(path) = asset_server.get_path(*id) else {
+        let Some(path) = asset_server.get_path(*asset_id) else {
             continue;
         };
         if !path.path().starts_with(&loaded_mod.mod_path) {
             continue;
         }
-        let Some(asset) = asset.get(*id) else {
+        let Ok(path) = Utf8PathBuf::from_path_buf(path.path().to_path_buf()) else {
+            error!(
+                ?path,
+                "Asset path contains non-UTF8 symbols, canceling hot-reloading"
+            );
+            continue;
+        };
+        let Some(asset) = asset.get(*asset_id) else {
             error!(?path, "Failed to fetch updated asset");
             continue;
         };
         let item = asset.database_item();
         let id = item.id().clone();
 
-        item.deserialize(&mut loaded_mod.registry)
-            .map(|_| {
-                info!("Hot reloaded item {}", id);
-            })
+        match item
+            .deserialize(&mut loaded_mod.registry)
             .with_context(|| format!("While hot reloading item {}", id))
-            .unwrap_or_else(report_error);
+        {
+            Err(err) => report_error(err),
+            Ok((new_id, old)) => {
+                match (
+                    action,
+                    loaded_mod.assets.get_by_left(&path),
+                    loaded_mod.assets.get_by_right(&new_id).zip(old),
+                ) {
+                    // New asset is added, but there is already an item with this ID
+                    (Action::Add, _, Some((conflict, old))) => {
+                        error!(
+                            item_path = %path,
+                            conflicting_path = %conflict,
+                            id = id,
+                            "Duplicate item, hot reloading canceled"
+                        );
+                        loaded_mod.registry.insert(old);
+                    }
+                    // New asset is added, but it was already in a system previously?
+                    // Weird situation, trigger full reload to be sure
+                    (Action::Add, Some(_), _) => {
+                        todo!("Full DB reload");
+                    }
+                    // New asset is added, resulting in no collisions
+                    (Action::Add, None, None) => {
+                        // New item, assets update is required
+                        info!(id, %path, "Hot reloaded item (new)");
+                        loaded_mod.assets.insert(path, new_id);
+                    }
+                    // Asset is updated, keeping the same ID and only conflicting with itself
+                    (Action::Update, Some(old_id), Some((conflict, _)))
+                        if old_id == &new_id && conflict == &path =>
+                    {
+                        info!(id, %path, "Hot reloaded item (updated)");
+                        // Do nothing, assets mapping is already up-to-date
+                    }
+                    // Asset is updated, but ID got changed, trigger full reload
+                    (Action::Update, Some(_), _) => {
+                        todo!("Full DB reload");
+                    }
+                    // Asset is updated, but no matching asset is already in a system?
+                    // Weird situation, trigger full reload to be sure
+                    (Action::Update, None, _) => {
+                        todo!("Full DB reload");
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -224,7 +275,7 @@ fn construct_mod<'a>(
     files: impl IntoIterator<Item = (Utf8PathBuf, &'a DatabaseAsset)>,
 ) -> miette::Result<ModData> {
     let mut registry = ModRegistry::default();
-    let mut asset_paths: FxBiHashMap<Utf8PathBuf, SlabMapUntypedId> = Default::default();
+    let mut asset_paths: FxBiHashMap<Utf8PathBuf, RegistryId> = Default::default();
     for (path, asset) in files {
         let item = asset.database_item();
         let display_id = item.id().to_string();
