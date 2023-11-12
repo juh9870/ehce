@@ -2,14 +2,13 @@ use bevy::app::{App, Plugin};
 use bevy::asset::{Handle, LoadedFolder};
 use bevy::prelude::{Event, Resource, States};
 use camino::Utf8PathBuf;
+use database::model::ModRegistry;
 use utils::slab_map::SlabMapUntypedId;
 use utils::FxBiHashMap;
 
 use crate::mods::loading::ModLoadingPlugin;
-use crate::mods::model::ModRegistry;
 
 pub mod loading;
-pub mod model;
 
 #[derive(Debug)]
 pub struct ModPlugin;

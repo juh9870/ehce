@@ -1,4 +1,4 @@
-use crate::mods::model::{
+use crate::model::{
     DatabaseItem, DatabaseItemKind, DatabaseItemTrait, ItemId, ModItemValidationError, ModRegistry,
 };
 use utils::slab_map::SlabMapUntypedId;
@@ -6,9 +6,9 @@ use utils::slab_map::SlabMapUntypedId;
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Ship {
-    id: ItemId,
-    sprite: String,
-    model_scale: f32,
+    pub id: ItemId,
+    pub sprite: String,
+    pub model_scale: f32,
 }
 
 impl DatabaseItemTrait for Ship {

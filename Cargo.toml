@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["combat", "ehce", "ehce_core", "utils", "xtask"]
+members = ["combat", "database", "ehce", "ehce_core", "utils", "xtask"]
 
 [workspace.dependencies]
 bevy = { version = "0.12.0", default-features = false }

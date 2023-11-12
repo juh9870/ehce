@@ -3,13 +3,13 @@ use bevy::core::FrameCount;
 
 use bevy::prelude::*;
 use camino::{Utf8Path, Utf8PathBuf};
+use database::model::{DatabaseAsset, DatabaseItemTrait, ModRegistry};
 use miette::{IntoDiagnostic, WrapErr};
 use rustc_hash::FxHashSet;
 
 use utils::slab_map::SlabMapUntypedId;
 use utils::FxBiHashMap;
 
-use crate::mods::model::{DatabaseAsset, DatabaseItemTrait, ModRegistry};
 use crate::mods::{ModData, ModLoadErrorEvent, ModLoadedEvent, ModState, WantLoadModEvent};
 use crate::{report_error, SimpleStateObjectPlugin};
 

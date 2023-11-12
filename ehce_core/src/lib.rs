@@ -1,11 +1,11 @@
 use crate::init::InitPlugin;
 use crate::json5_asset_plugin::Json5AssetPlugin;
-use crate::mods::model::DatabaseAsset;
 use crate::mods::ModPlugin;
 use bevy::app::App;
 use bevy::ecs::prelude::States;
 use bevy::prelude::*;
 
+use database::model::DatabaseAsset;
 use std::marker::PhantomData;
 
 mod init;
