@@ -86,20 +86,20 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
         }
     }
 
-    pub fn get_by_id(&self, id: SlabMapId<V>) -> &V {
-        &self.items[id.0]
+    pub fn get_by_id(&self, id: SlabMapId<V>) -> Option<&V> {
+        self.items.get(id.0)
     }
 
-    pub fn get_by_id_mut(&mut self, id: SlabMapId<V>) -> &mut V {
-        &mut self.items[id.0]
+    pub fn get_by_id_mut(&mut self, id: SlabMapId<V>) -> Option<&mut V> {
+        self.items.get_mut(id.0)
     }
 
-    pub fn get_by_untyped_id(&self, id: SlabMapUntypedId) -> &V {
-        &self.items[id.0]
+    pub fn get_by_untyped_id(&self, id: SlabMapUntypedId) -> Option<&V> {
+        self.items.get(id.0)
     }
 
-    pub fn get_by_untyped_id_mut(&mut self, id: SlabMapUntypedId) -> &mut V {
-        &mut self.items[id.0]
+    pub fn get_by_untyped_id_mut(&mut self, id: SlabMapUntypedId) -> Option<&mut V> {
+        self.items.get_mut(id.0)
     }
 
     pub fn get_by_raw(&self, id: usize) -> Option<&V> {
@@ -123,14 +123,14 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
 
     pub fn get<Q: Borrow<K>>(&self, k: SlabMapKeyOrId<Q, V>) -> Option<&V> {
         match k {
-            SlabMapKeyOrId::Id(id) => Some(self.get_by_id(id)),
+            SlabMapKeyOrId::Id(id) => self.get_by_id(id),
             SlabMapKeyOrId::Key(key) => self.get_by_key(key.borrow()),
         }
     }
 
     pub fn get_mut<Q: Borrow<K>>(&mut self, k: SlabMapKeyOrId<Q, V>) -> Option<&mut V> {
         match k {
-            SlabMapKeyOrId::Id(id) => Some(self.get_by_id_mut(id)),
+            SlabMapKeyOrId::Id(id) => self.get_by_id_mut(id),
             SlabMapKeyOrId::Key(key) => self.get_by_key_mut(key.borrow()),
         }
     }
@@ -167,13 +167,13 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> Index<SlabMapId<V>> for SlabMap<K, V,
     type Output = V;
 
     fn index(&self, index: SlabMapId<V>) -> &Self::Output {
-        self.get_by_id(index)
+        &self.items[index.0]
     }
 }
 
 impl<K: Eq + Hash, V, Hasher: BuildHasher> IndexMut<SlabMapId<V>> for SlabMap<K, V, Hasher> {
     fn index_mut(&mut self, index: SlabMapId<V>) -> &mut Self::Output {
-        self.get_by_id_mut(index)
+        &mut self.items[index.0]
     }
 }
 
