@@ -8,6 +8,9 @@ use bevy::prelude::*;
 use database::model::DatabaseAsset;
 use std::marker::PhantomData;
 
+// Re-export database
+pub use database;
+
 mod init;
 mod json5_asset_plugin;
 pub mod mods;
