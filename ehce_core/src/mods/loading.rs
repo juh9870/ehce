@@ -58,9 +58,12 @@ fn loader(
     asset_server: Res<AssetServer>,
     folder_assets: Res<Assets<LoadedFolder>>,
     database_items: Res<Assets<DatabaseAsset>>,
+    mut db_asset_events: ResMut<Events<AssetEvent<DatabaseAsset>>>,
     mut data: ResMut<LoadingStateData>,
     mut err_evt: EventWriter<ModLoadErrorEvent>,
     mut switch_evt: EventWriter<ModLoadedEvent>,
+    frame: Res<FrameCount>,
+    mut wait_until: Local<Option<u32>>,
 ) {
     match asset_server.load_state(&data.folder_handle) {
         LoadState::NotLoaded => {
@@ -101,6 +104,15 @@ fn loader(
     if !handles.is_empty() {
         return;
     }
+
+    let wait_until = wait_until.get_or_insert(frame.0 + 1);
+
+    if frame.0 < *wait_until {
+        return;
+    }
+
+    // Clear all pending asset events to avoid hot reloading all currently loaded files
+    db_asset_events.clear();
 
     let Some(path) = asset_server.get_path(&data.folder_handle) else {
         error!("Mod folder is missing asset path");
