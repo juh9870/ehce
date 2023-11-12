@@ -1,7 +1,7 @@
 {
   "id": "eh:scout",
-  "type": "Ship",
   "version": "0",
+  "type": "Ship",
   "sprite": "icon.png",
   "modelScale": 1
 }

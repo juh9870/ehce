@@ -1,9 +1,11 @@
-use crate::mods::loading::ModLoadingPlugin;
 use bevy::app::{App, Plugin};
 use bevy::asset::{Handle, LoadedFolder};
 use bevy::prelude::{Event, Resource, States};
 use camino::Utf8PathBuf;
+use utils::slab_map::SlabMapUntypedId;
+use utils::FxBiHashMap;
 
+use crate::mods::loading::ModLoadingPlugin;
 use crate::mods::model::ModRegistry;
 
 pub mod loading;
@@ -27,6 +29,7 @@ pub struct ModData {
     pub registry: ModRegistry,
     pub mod_path: Utf8PathBuf,
     pub folder_handle: Handle<LoadedFolder>,
+    pub assets: FxBiHashMap<Utf8PathBuf, SlabMapUntypedId>,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash)]

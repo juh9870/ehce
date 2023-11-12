@@ -1,8 +1,13 @@
 use bevy::asset::{AssetPath, LoadState, LoadedFolder, UntypedAssetId};
+use bevy::core::FrameCount;
+
 use bevy::prelude::*;
 use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr};
 use rustc_hash::FxHashSet;
+
+use utils::slab_map::SlabMapUntypedId;
+use utils::FxBiHashMap;
 
 use crate::mods::model::{DatabaseAsset, DatabaseItemTrait, ModRegistry};
 use crate::mods::{ModData, ModLoadErrorEvent, ModLoadedEvent, ModState, WantLoadModEvent};
@@ -23,7 +28,7 @@ impl Plugin for ModLoadingPlugin {
         .add_systems(Update, mod_load)
         .add_systems(Update, loader.run_if(in_state(ModState::Loading)))
         .add_systems(Update, hot_reload.run_if(in_state(ModState::Ready)))
-        .add_systems(Update, asset_tracer);
+        .add_systems(Update, asset_tracer.before(hot_reload));
     }
 }
 
@@ -104,8 +109,25 @@ fn loader(
     };
 
     info!("Mod assets are loaded");
+    let mut files = Vec::new();
+    for handle in &folder.handles {
+        let Some(item) = database_items.get(handle) else {
+            continue;
+        };
 
-    let files = folder.handles.iter().filter_map(|e| database_items.get(e));
+        let Some(path) = asset_server.get_path(handle.id()) else {
+            error!(?handle, id=?handle.id(), "Failed to fetch path for a database item");
+            continue;
+        };
+
+        let path = path.path();
+        let Ok(path) = Utf8PathBuf::try_from(path.to_path_buf()) else {
+            error!(path=path.to_string_lossy().to_string(), raw_path=?path, ?handle, id=?handle.id(), "Asset path contains non-UTF8 symbols");
+            continue;
+        };
+
+        files.push((path, item));
+    }
     match construct_mod(path, data.folder_handle.clone(), files) {
         Ok(data) => {
             info!("Mod is constructed, sending events");
@@ -132,9 +154,16 @@ pub fn available_mods(
         })
 }
 
-fn asset_tracer(mut folder_evt: EventReader<AssetEvent<LoadedFolder>>) {
+fn asset_tracer(
+    mut folder_evt: EventReader<AssetEvent<LoadedFolder>>,
+    mut asset_evt: EventReader<AssetEvent<DatabaseAsset>>,
+    frame: Res<FrameCount>,
+) {
     for evt in folder_evt.read() {
-        info!(?evt, "Folder event")
+        info!(frame = frame.0, ?evt, "Folder event")
+    }
+    for evt in asset_evt.read() {
+        info!(frame = frame.0, ?evt, "Asset event")
     }
 }
 
@@ -149,7 +178,7 @@ fn hot_reload(
         Update,
     }
     for evt in evt.read() {
-        let (id, action) = match evt {
+        let (id, _action) = match evt {
             AssetEvent::Added { id } => (id, Action::Add),
             AssetEvent::Modified { id } => (id, Action::Update),
             AssetEvent::Removed { .. } => continue,
@@ -167,31 +196,50 @@ fn hot_reload(
         };
         let item = asset.database_item();
         let id = item.id().clone();
-        match action {
-            Action::Add | Action::Update => item
-                .deserialize(&mut loaded_mod.registry)
-                .map(|_| {
-                    info!("Hot reloaded item {}", id);
-                })
-                .with_context(|| format!("While hot reloading item {}", id))
-                .unwrap_or_else(report_error),
-        }
+
+        item.deserialize(&mut loaded_mod.registry)
+            .map(|_| {
+                info!("Hot reloaded item {}", id);
+            })
+            .with_context(|| format!("While hot reloading item {}", id))
+            .unwrap_or_else(report_error);
     }
 }
 
 fn construct_mod<'a>(
     mod_path: AssetPath,
     folder_handle: Handle<LoadedFolder>,
-    files: impl IntoIterator<Item = &'a DatabaseAsset>,
+    files: impl IntoIterator<Item = (Utf8PathBuf, &'a DatabaseAsset)>,
 ) -> miette::Result<ModData> {
     let mut registry = ModRegistry::default();
-    for asset in files {
+    let mut asset_paths: FxBiHashMap<Utf8PathBuf, SlabMapUntypedId> = Default::default();
+    for (path, asset) in files {
         let item = asset.database_item();
-        item.deserialize(&mut registry)?;
+        let display_id = item.id().to_string();
+        let (id, old) = item.deserialize(&mut registry)?;
+        if old.is_some() {
+            let Some(old_path) = asset_paths.get_by_right(&id) else {
+                error!(path=path.to_string(),
+                    id=display_id,
+                    raw_id=?id,
+                    "Conflicting mod items detected, \
+                    but conflicting asset path was not found. What's going on?");
+                continue;
+            };
+            error!(
+                first_item = old_path.to_string(),
+                second_item = path.to_string(),
+                id=display_id,
+                raw_id=?id,
+                "Conflicting mod items detected"
+            )
+        }
+        asset_paths.insert(path, id);
     }
     Ok(ModData {
         registry,
         mod_path: Utf8PathBuf::try_from(mod_path.path().to_path_buf()).into_diagnostic()?,
         folder_handle,
+        assets: asset_paths,
     })
 }
