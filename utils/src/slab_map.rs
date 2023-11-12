@@ -8,12 +8,29 @@ use nohash_hasher::NoHashHasher;
 use serde::Deserializer;
 use slab::Slab;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct SlabMapId<V>(usize, PhantomData<V>);
 
 impl<V> SlabMapId<V> {
     fn new(id: usize) -> Self {
         Self(id, Default::default())
+    }
+
+    pub fn raw(&self) -> usize {
+        self.0
+    }
+
+    pub fn as_untyped(&self) -> SlabMapUntypedId {
+        SlabMapUntypedId::new(self.0)
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct SlabMapUntypedId(usize);
+
+impl SlabMapUntypedId {
+    fn new(id: usize) -> Self {
+        Self(id)
     }
 
     pub fn raw(&self) -> usize {
@@ -30,6 +47,18 @@ pub enum SlabMapKeyOrId<K, V> {
 impl<K, V> From<SlabMapId<V>> for SlabMapKeyOrId<K, V> {
     fn from(value: SlabMapId<V>) -> Self {
         SlabMapKeyOrId::Id(value)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum SlabMapKeyOrUntypedId<K> {
+    Id(SlabMapUntypedId),
+    Key(K),
+}
+
+impl<K> From<SlabMapUntypedId> for SlabMapKeyOrUntypedId<K> {
+    fn from(value: SlabMapUntypedId) -> Self {
+        SlabMapKeyOrUntypedId::Id(value)
     }
 }
 
@@ -65,6 +94,14 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
         &mut self.items[id.0]
     }
 
+    pub fn get_by_untyped_id(&self, id: SlabMapUntypedId) -> &V {
+        &self.items[id.0]
+    }
+
+    pub fn get_by_untyped_id_mut(&mut self, id: SlabMapUntypedId) -> &mut V {
+        &mut self.items[id.0]
+    }
+
     pub fn get_by_raw(&self, id: usize) -> Option<&V> {
         self.items.get(id)
     }
@@ -95,6 +132,23 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
         match k {
             SlabMapKeyOrId::Id(id) => Some(self.get_by_id_mut(id)),
             SlabMapKeyOrId::Key(key) => self.get_by_key_mut(key.borrow()),
+        }
+    }
+
+    pub fn get_by_untyped<Q: Borrow<K>>(&self, k: SlabMapKeyOrUntypedId<Q>) -> Option<&V> {
+        match k {
+            SlabMapKeyOrUntypedId::Id(id) => self.get_by_raw(id.0),
+            SlabMapKeyOrUntypedId::Key(key) => self.get_by_key(key.borrow()),
+        }
+    }
+
+    pub fn get_by_untyped_mut<Q: Borrow<K>>(
+        &mut self,
+        k: SlabMapKeyOrUntypedId<Q>,
+    ) -> Option<&mut V> {
+        match k {
+            SlabMapKeyOrUntypedId::Id(id) => self.get_by_raw_mut(id.0),
+            SlabMapKeyOrUntypedId::Key(key) => self.get_by_key_mut(key.borrow()),
         }
     }
 
