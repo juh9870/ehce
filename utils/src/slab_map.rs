@@ -8,7 +8,7 @@ use nohash_hasher::NoHashHasher;
 use serde::Deserializer;
 use slab::Slab;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct SlabMapId<V>(usize, PhantomData<V>);
 
 impl<V> SlabMapId<V> {
@@ -24,6 +24,13 @@ impl<V> SlabMapId<V> {
         SlabMapUntypedId::new(self.0)
     }
 }
+
+impl<T> Clone for SlabMapId<T> {
+    fn clone(&self) -> Self {
+        Self(self.0, self.1)
+    }
+}
+impl<T> Copy for SlabMapId<T> {}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct SlabMapUntypedId(usize);
@@ -43,6 +50,14 @@ impl SlabMapUntypedId {
     /// original ID did not belong to the indexed SlabMap
     pub fn as_typed_unchecked<T>(&self) -> SlabMapId<T> {
         SlabMapId::new(self.0)
+    }
+
+    /// Performs unchecked conversion from a raw slab index to a SlabMap key
+    ///
+    /// Indexing directly with a resulting ID might lead to panics if the
+    /// original index did not belong to the indexed SlabMap
+    pub fn from_raw_unchecked(value: usize) -> SlabMapUntypedId {
+        SlabMapUntypedId::new(value)
     }
 }
 
@@ -77,6 +92,9 @@ pub struct SlabMap<K: Eq + Hash, V, Hasher: BuildHasher = BuildHasherDefault<rus
     keys: BiHashMap<K, usize, Hasher, BuildHasherDefault<NoHashHasher<usize>>>,
 }
 
+#[derive(Debug)]
+pub struct SlabMapDuplicateError<K, V>(pub K, pub V);
+
 impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
     pub fn insert(&mut self, key: K, value: V) -> (SlabMapId<V>, Option<V>) {
         match self.keys.get_by_left(&key) {
@@ -92,6 +110,59 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
                 (SlabMapId::new(*id), Some(old))
             }
         }
+    }
+
+    pub fn insert_with_id(
+        &mut self,
+        key: K,
+        item: impl FnOnce(SlabMapId<V>) -> V,
+    ) -> (SlabMapId<V>, Option<V>) {
+        match self.keys.get_by_left(&key) {
+            None => {
+                let entry = self.items.vacant_entry();
+                let id = SlabMapId::<V>::new(entry.key());
+                let item = item(id);
+                self.keys.insert(key, entry.key());
+                entry.insert(item);
+                (id, None)
+            }
+            Some(id) => {
+                let slab_id = SlabMapId::<V>::new(*id);
+                let mut old = item(slab_id);
+                std::mem::swap(&mut self.items[*id], &mut old);
+                (slab_id, Some(old))
+            }
+        }
+    }
+
+    pub fn insert_new(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result<SlabMapId<V>, SlabMapDuplicateError<K, V>> {
+        if self.keys.contains_left(&key) {
+            return Err(SlabMapDuplicateError(key, value));
+        }
+        let id = self.items.insert(value);
+        self.keys.insert(key, id);
+
+        Ok(SlabMapId::new(id))
+    }
+
+    pub fn insert_new_with_id(
+        &mut self,
+        key: K,
+        item: impl FnOnce(SlabMapId<V>) -> V,
+    ) -> Result<SlabMapId<V>, SlabMapDuplicateError<K, V>> {
+        if let Some(id) = self.keys.get_by_left(&key) {
+            return Err(SlabMapDuplicateError(key, item(SlabMapId::new(*id))));
+        }
+        let entry = self.items.vacant_entry();
+        let id = SlabMapId::<V>::new(entry.key());
+        let item = item(id);
+        self.keys.insert(key, entry.key());
+        entry.insert(item);
+        Ok(id)
     }
 
     pub fn get_by_id(&self, id: SlabMapId<V>) -> Option<&V> {
@@ -168,6 +239,28 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
 
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.items.iter().map(|e| e.1)
+    }
+
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
+        self.items.iter_mut().map(|e| e.1)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (SlabMapId<V>, &V)> {
+        self.items.iter().map(|(id, e)| (SlabMapId::new(id), e))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (SlabMapId<V>, &mut V)> {
+        self.items.iter_mut().map(|(id, e)| (SlabMapId::new(id), e))
+    }
+
+    pub fn into_iter(mut self) -> impl Iterator<Item = (K, usize, V)> {
+        self.items.into_iter().map(move |(id, v)| {
+            let (key, _) = self
+                .keys
+                .remove_by_right(&id)
+                .unwrap_or_else(|| unreachable!());
+            (key, id, v)
+        })
     }
 }
 

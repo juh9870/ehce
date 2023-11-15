@@ -1,12 +1,12 @@
 use database_model_macro::database_model;
 use utils::slab_map::SlabMapId;
 
+use crate::model::ship::Ship;
+
 #[database_model]
 #[derive(Debug, Clone)]
-pub struct Ship {
+pub struct ShipBuild {
     #[model(id)]
-    pub id: SlabMapId<Ship>,
-    pub sprite: String,
-    #[model(min = 0.1, max = 100.0)]
-    pub model_scale: f32,
+    pub id: SlabMapId<ShipBuild>,
+    pub ship: SlabMapId<Ship>,
 }

@@ -3,13 +3,12 @@ use bevy::core::FrameCount;
 use bevy::prelude::*;
 use camino::{Utf8Path, Utf8PathBuf};
 use database::call_with_all_models;
-use miette::{IntoDiagnostic, WrapErr};
+use miette::IntoDiagnostic;
 use rustc_hash::FxHashSet;
 
 use database::model::{
-    DatabaseAsset, DatabaseItemKind, DatabaseItemTrait, ModRegistry, RegistryId,
+    DatabaseAsset, DatabaseItemKind, DatabaseItemSerialized, ModRegistry, RegistryId,
 };
-use utils::FxBiHashMap;
 
 use crate::mods::{
     ModData, ModHotReloadEvent, ModLoadErrorEvent, ModLoadedEvent, ModState,
@@ -188,17 +187,17 @@ fn asset_tracer(
 
 fn hot_reload(
     mut evt: EventReader<AssetEvent<DatabaseAsset>>,
-    mut hot_reload_event: EventWriter<InternalHotReloadEvent>,
-    asset: Res<Assets<DatabaseAsset>>,
+    _hot_reload_event: EventWriter<InternalHotReloadEvent>,
+    _asset: Res<Assets<DatabaseAsset>>,
     asset_server: Res<AssetServer>,
-    mut loaded_mod: ResMut<ModData>,
+    loaded_mod: ResMut<ModData>,
 ) {
     enum Action {
         Add,
         Update,
     }
     for evt in evt.read() {
-        let (asset_id, action) = match evt {
+        let (asset_id, _action) = match evt {
             AssetEvent::Added { id } => (id, Action::Add),
             AssetEvent::Modified { id } => (id, Action::Update),
             AssetEvent::Removed { .. } => continue,
@@ -210,72 +209,74 @@ fn hot_reload(
         if !path.path().starts_with(&loaded_mod.mod_path) {
             continue;
         }
-        let Ok(path) = Utf8PathBuf::from_path_buf(path.path().to_path_buf()) else {
-            error!(
-                ?path,
-                "Asset path contains non-UTF8 symbols, canceling hot-reloading"
-            );
-            continue;
-        };
-        let Some(asset) = asset.get(*asset_id) else {
-            error!(?path, "Failed to fetch updated asset");
-            continue;
-        };
-        let item = asset.database_item();
-        let id = item.id().clone();
 
-        match item
-            .deserialize(&mut loaded_mod.registry)
-            .with_context(|| format!("While hot reloading item {}", id))
-        {
-            Err(err) => report_error(err),
-            Ok((new_id, old)) => {
-                match (
-                    action,
-                    loaded_mod.assets.get_by_left(&path),
-                    loaded_mod.assets.get_by_right(&new_id).zip(old),
-                ) {
-                    // New asset is added, but there is already an item with this ID
-                    (Action::Add, _, Some((conflict, old))) => {
-                        error!(
-                            item_path = %path,
-                            conflicting_path = %conflict,
-                            id = id,
-                            "Duplicate item, hot reloading canceled"
-                        );
-                        loaded_mod.registry.insert(old);
-                    }
-                    // New asset is added, but it was already in a system previously?
-                    // Weird situation, trigger full reload to be sure
-                    (Action::Add, Some(_), _) => {
-                        todo!("Full DB reload");
-                    }
-                    // New asset is added, resulting in no collisions
-                    (Action::Add, None, None) => {
-                        info!(id, %path, "Hot reloaded item (new)");
-                        // New item, assets update is required
-                        loaded_mod.assets.insert(path, new_id);
-                        hot_reload_event.send(InternalHotReloadEvent::Single(new_id));
-                    }
-                    // Asset is updated, keeping the same ID and only conflicting with itself
-                    (Action::Update, Some(old_id), Some((conflict, _)))
-                        if old_id == &new_id && conflict == &path =>
-                    {
-                        info!(id, %path, "Hot reloaded item (updated)");
-                        hot_reload_event.send(InternalHotReloadEvent::Single(new_id));
-                    }
-                    // Asset is updated, but ID got changed, trigger full reload
-                    (Action::Update, Some(_), _) => {
-                        todo!("Full DB reload");
-                    }
-                    // Asset is updated, but no matching asset is already in a system?
-                    // Weird situation, trigger full reload to be sure
-                    (Action::Update, None, _) => {
-                        todo!("Full DB reload");
-                    }
-                }
-            }
-        }
+        todo!("Full DB reload");
+        // let Ok(path) = Utf8PathBuf::from_path_buf(path.path().to_path_buf()) else {
+        //     error!(
+        //         ?path,
+        //         "Asset path contains non-UTF8 symbols, canceling hot-reloading"
+        //     );
+        //     continue;
+        // };
+        // let Some(asset) = asset.get(*asset_id) else {
+        //     error!(?path, "Failed to fetch updated asset");
+        //     continue;
+        // };
+        // let item = asset.database_item();
+        // let id = item.id().clone();
+        //
+        // match item
+        //     .deserialize(&mut loaded_mod.registry)
+        //     .with_context(|| format!("While hot reloading item {}", id))
+        // {
+        //     Err(err) => report_error(err),
+        //     Ok((new_id, old)) => {
+        //         match (
+        //             action,
+        //             loaded_mod.assets.get_by_left(&path),
+        //             loaded_mod.assets.get_by_right(&new_id).zip(old),
+        //         ) {
+        //             // New asset is added, but there is already an item with this ID
+        //             (Action::Add, _, Some((conflict, old))) => {
+        //                 error!(
+        //                     item_path = %path,
+        //                     conflicting_path = %conflict,
+        //                     id = id,
+        //                     "Duplicate item, hot reloading canceled"
+        //                 );
+        //                 loaded_mod.registry.insert(old);
+        //             }
+        //             // New asset is added, but it was already in a system previously?
+        //             // Weird situation, trigger full reload to be sure
+        //             (Action::Add, Some(_), _) => {
+        //                 todo!("Full DB reload");
+        //             }
+        //             // New asset is added, resulting in no collisions
+        //             (Action::Add, None, None) => {
+        //                 info!(id, %path, "Hot reloaded item (new)");
+        //                 // New item, assets update is required
+        //                 loaded_mod.assets.insert(path, new_id);
+        //                 hot_reload_event.send(InternalHotReloadEvent::Single(new_id));
+        //             }
+        //             // Asset is updated, keeping the same ID and only conflicting with itself
+        //             (Action::Update, Some(old_id), Some((conflict, _)))
+        //                 if old_id == &new_id && conflict == &path =>
+        //             {
+        //                 info!(id, %path, "Hot reloaded item (updated)");
+        //                 hot_reload_event.send(InternalHotReloadEvent::Single(new_id));
+        //             }
+        //             // Asset is updated, but ID got changed, trigger full reload
+        //             (Action::Update, Some(_), _) => {
+        //                 todo!("Full DB reload");
+        //             }
+        //             // Asset is updated, but no matching asset is already in a system?
+        //             // Weird situation, trigger full reload to be sure
+        //             (Action::Update, None, _) => {
+        //                 todo!("Full DB reload");
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -342,35 +343,47 @@ fn construct_mod<'a>(
     folder_handle: Handle<LoadedFolder>,
     files: impl IntoIterator<Item = (Utf8PathBuf, &'a DatabaseAsset)>,
 ) -> miette::Result<ModData> {
-    let mut registry = ModRegistry::default();
-    let mut asset_paths: FxBiHashMap<Utf8PathBuf, RegistryId> = Default::default();
-    for (path, asset) in files {
-        let item = asset.database_item();
-        let display_id = item.id().to_string();
-        let (id, old) = item.deserialize(&mut registry)?;
-        if old.is_some() {
-            let Some(old_path) = asset_paths.get_by_right(&id) else {
-                error!(path=path.to_string(),
-                    id=display_id,
-                    raw_id=?id,
-                    "Conflicting mod items detected, \
-                    but conflicting asset path was not found. What's going on?");
-                continue;
-            };
-            error!(
-                first_item = old_path.to_string(),
-                second_item = path.to_string(),
-                id=display_id,
-                raw_id=?id,
-                "Conflicting mod items detected"
-            )
+    let assets: Vec<DatabaseItemSerialized> = files
+        .into_iter()
+        .map(|(_, item)| item.0.clone().into_serialized())
+        .collect();
+
+    let registry = match ModRegistry::build(assets) {
+        Ok(data) => data,
+        Err(err) => {
+            report_error(err.clone());
+            return Err(err.into());
         }
-        asset_paths.insert(path, id);
-    }
+    };
+
+    // let mut asset_paths: FxBiHashMap<Utf8PathBuf, RegistryId> = Default::default();
+    // for (path, asset) in files {
+    //     let item = asset.database_item();
+    //     let display_id = item.id().to_string();
+    //     let (id, old) = item.deserialize(&mut registry)?;
+    //     if old.is_some() {
+    //         let Some(old_path) = asset_paths.get_by_right(&id) else {
+    //             error!(path=path.to_string(),
+    //                 id=display_id,
+    //                 raw_id=?id,
+    //                 "Conflicting mod items detected, \
+    //                 but conflicting asset path was not found. What's going on?");
+    //             continue;
+    //         };
+    //         error!(
+    //             first_item = old_path.to_string(),
+    //             second_item = path.to_string(),
+    //             id=display_id,
+    //             raw_id=?id,
+    //             "Conflicting mod items detected"
+    //         )
+    //     }
+    //     asset_paths.insert(path, id);
+    // }
     Ok(ModData {
         registry,
         mod_path: Utf8PathBuf::try_from(mod_path.path().to_path_buf()).into_diagnostic()?,
         folder_handle,
-        assets: asset_paths,
+        // assets: asset_paths,
     })
 }

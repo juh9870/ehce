@@ -1,18 +1,24 @@
 [workspace]
 resolver = "2"
-members = ["combat", "database", "ehce", "ehce_core", "utils", "xtask"]
+members = ["combat", "database", "database_model_macro", "ehce", "ehce_core", "utils", "xtask"]
 
 [workspace.dependencies]
+attribute-derive = "0.6"
 bevy = { version = "0.12.0", default-features = false }
 bevy_common_assets = "0.8"
 bimap = "0.6"
 bytemuck = "1"
 camino = "1"
+convert_case = "0.6"
+duplicate = "1"
 euclid = { version = "0.22", features = ["bytemuck"] }
 glam = { version = "0.24", features = ["bytemuck"] }
+itertools = "0.12"
 miette = "5"
 nohash-hasher = "0.2"
 paste = "1"
+proc-macro2 = "1.0"
+quote = "1.0"
 rustc-hash = "1"
 serde = "1"
 serde_derive = "1"
@@ -20,6 +26,7 @@ serde_json5 = "0.1"
 slab = "0.4"
 strum = "0.25"
 strum_macros = "0.25"
+syn = "2.0"
 thiserror = "1"
 tracing = "0.1"
 
