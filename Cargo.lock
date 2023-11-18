@@ -1528,6 +1528,7 @@ dependencies = [
  "bevy",
  "database_model_macro",
  "duplicate",
+ "glam",
  "itertools",
  "miette",
  "paste",

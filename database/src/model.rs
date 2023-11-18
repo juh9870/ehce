@@ -139,7 +139,7 @@ impl RegistryKeyOrId<&ItemId> {
     }
 }
 macro_rules! registry {
-    ($($name:ident: $ty:ty),*) => {
+    ($($name:ident: $ty:ty),*$(,)?) => {
         paste! {
             #[derive(Debug, Clone, EnumDiscriminants, EnumIs)]
             #[strum_discriminants(derive(Display, Hash))]
@@ -294,7 +294,7 @@ impl ModRegistry {
 }
 
 macro_rules! registry_partial {
-    ($($name:ident: $ty:ty),*) => {
+    ($($name:ident: $ty:ty),*$(,)?) => {
         paste! {
             #[derive(Debug, Default)]
             pub(crate) struct PartialModRegistry {
@@ -318,7 +318,7 @@ macro_rules! registry_partial {
 }
 
 macro_rules! registry_raw {
-    ($($name:ident: $ty:ty),*) => {
+    ($($name:ident: $ty:ty),*$(,)?) => {
         paste! {
             #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, EnumIs)]
             #[serde(tag = "type")]

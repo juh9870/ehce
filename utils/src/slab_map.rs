@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::hash::{BuildHasher, BuildHasherDefault, Hash};
+use std::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
@@ -8,7 +8,7 @@ use nohash_hasher::NoHashHasher;
 use serde::Deserializer;
 use slab::Slab;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug)]
 pub struct SlabMapId<V>(usize, PhantomData<V>);
 
 impl<V> SlabMapId<V> {
@@ -25,14 +25,30 @@ impl<V> SlabMapId<V> {
     }
 }
 
+impl<V> PartialEq for SlabMapId<V> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<V> Eq for SlabMapId<V> {}
+
+impl<V> Hash for SlabMapId<V> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
+    }
+}
+
 impl<T> Clone for SlabMapId<T> {
     fn clone(&self) -> Self {
-        Self(self.0, self.1)
+        *self
     }
 }
 impl<T> Copy for SlabMapId<T> {}
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+impl<V> nohash_hasher::IsEnabled for SlabMapId<V> {}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SlabMapUntypedId(usize);
 
 impl SlabMapUntypedId {
@@ -60,6 +76,14 @@ impl SlabMapUntypedId {
         SlabMapUntypedId::new(value)
     }
 }
+
+impl Hash for SlabMapUntypedId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl nohash_hasher::IsEnabled for SlabMapUntypedId {}
 
 #[derive(Debug, Copy, Clone)]
 pub enum SlabMapKeyOrId<K, V> {

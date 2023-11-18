@@ -281,7 +281,7 @@ fn hot_reload(
 }
 
 macro_rules! typed_events {
-    ($($name:ident: $ty:ty),*) => {
+    ($($name:ident: $ty:ty),*$(,)?) => {
         #[derive(Debug)]
         struct TypedHotReloadEventsPlugin;
 

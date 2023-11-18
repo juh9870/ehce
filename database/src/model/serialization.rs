@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::hash::{BuildHasher, Hash};
 
 use duplicate::duplicate_item;
 use miette::Diagnostic;
@@ -24,6 +26,8 @@ pub enum DeserializationErrorKind {
 pub enum DeserializationErrorStackItem {
     Item(ItemId, DatabaseItemKind),
     Field(&'static str),
+    Index(usize),
+    MapEntry(String), // all JSON keys are strings, so we expect deserialized value to be reasonably displayable
 }
 
 impl Display for DeserializationErrorStackItem {
@@ -31,6 +35,10 @@ impl Display for DeserializationErrorStackItem {
         match self {
             DeserializationErrorStackItem::Item(id, kind) => write!(f, "In item <{kind}>`{id}`"),
             DeserializationErrorStackItem::Field(name) => write!(f, "In field {name}"),
+            DeserializationErrorStackItem::Index(i) => write!(f, "In item at position {i}"),
+            DeserializationErrorStackItem::MapEntry(name) => {
+                write!(f, "In map entry with key `{name}`")
+            }
         }
     }
 }
@@ -92,6 +100,14 @@ pub(crate) trait ApplyMax: Sized {
     [ i8 ]; [ i16 ]; [ i32 ]; [ i64 ]; [ i128 ];
     [ u8 ]; [ u16 ]; [ u32 ]; [ u64 ]; [ u128 ];
     [ f32 ]; [ f64 ];
+
+    [ glam::f32::Vec2 ]; [ glam::f32::Vec3 ]; [ glam::f32::Vec4 ];
+    [ glam::f64::DVec2 ]; [ glam::f64::DVec3 ]; [ glam::f64::DVec4 ];
+    [ glam::i32::IVec2 ]; [ glam::i32::IVec3 ]; [ glam::i32::IVec4 ];
+    [ glam::u32::UVec2 ]; [ glam::u32::UVec3 ]; [ glam::u32::UVec4 ];
+    [ glam::i64::I64Vec2 ]; [ glam::i64::I64Vec3 ]; [ glam::i64::I64Vec4 ];
+    [ glam::u64::U64Vec2 ]; [ glam::u64::U64Vec3 ]; [ glam::u64::U64Vec4 ];
+    [ glam::bool::BVec2 ]; [ glam::bool::BVec3 ]; [ glam::bool::BVec4 ];
 )]
 impl ModelDeserializable<ty> for ty {
     #[inline(always)]
@@ -116,12 +132,45 @@ impl<T: ModelDeserializable<R>, R> ModelDeserializable<Vec<R>> for Vec<T> {
         self,
         registry: &mut PartialModRegistry,
     ) -> Result<Vec<R>, DeserializationError> {
-        self.into_iter().map(|e| e.deserialize(registry)).collect()
+        self.into_iter()
+            .enumerate()
+            .map(|(i, e)| {
+                e.deserialize(registry)
+                    .map_err(|e| e.context(DeserializationErrorStackItem::Index(i)))
+            })
+            .collect()
+    }
+}
+
+impl<
+        RawKey: ModelDeserializable<Key> + Eq + Hash + Display,
+        Key: Eq + Hash,
+        RawValue: ModelDeserializable<Value>,
+        Value,
+        RawHasher: BuildHasher,
+        Hasher: BuildHasher + Default,
+    > ModelDeserializable<HashMap<Key, Value, Hasher>> for HashMap<RawKey, RawValue, RawHasher>
+{
+    fn deserialize(
+        self,
+        registry: &mut PartialModRegistry,
+    ) -> Result<HashMap<Key, Value, Hasher>, DeserializationError> {
+        self.into_iter()
+            .map(|(k, v)| {
+                let v = v.deserialize(registry).map_err(|e| {
+                    e.context(DeserializationErrorStackItem::MapEntry(k.to_string()))
+                })?;
+                // TODO: providing context here requires cloning a key, which is
+                // less than desireable, but not providing context is pretty bad
+                let k = k.deserialize(registry)?;
+                Ok((k, v))
+            })
+            .collect()
     }
 }
 
 #[duplicate_item(
-    ty trait_name op(a,b);
+    ty trait_name err op(a,b);
     duplicate!{
         [
             ty_nested;
@@ -129,8 +178,8 @@ impl<T: ModelDeserializable<R>, R> ModelDeserializable<Vec<R>> for Vec<T> {
             [ u8 ]; [ u16 ]; [ u32 ]; [ u64 ]; [ u128 ];
             [ f32 ]; [ f64 ];
         ]
-        [ ty_nested ] [ApplyMax] [a > b];
-        [ ty_nested ] [ApplyMin] [a < b];
+        [ ty_nested ] [ ApplyMax ] [ ValueTooLarge ] [a > b];
+        [ ty_nested ] [ ApplyMin ] [ ValueTooSmall ] [a < b];
     }
 )]
 impl trait_name for ty {
@@ -139,13 +188,29 @@ impl trait_name for ty {
     fn apply(self, limit: Self::Num) -> Result<Self, DeserializationError> {
         if op([self], [limit]) {
             #[allow(clippy::unnecessary_cast)]
-            return Err(DeserializationErrorKind::ValueTooLarge {
+            return Err(DeserializationErrorKind::err {
                 limit: limit as f64,
                 got: self as f64,
             }
             .into());
         }
         Ok(self)
+    }
+}
+
+impl<T: ApplyMin> ApplyMin for Option<T> {
+    type Num = T::Num;
+
+    fn apply(self, min: Self::Num) -> Result<Self, DeserializationError> {
+        self.map(|e| e.apply(min)).transpose()
+    }
+}
+
+impl<T: ApplyMax> ApplyMax for Option<T> {
+    type Num = T::Num;
+
+    fn apply(self, max: Self::Num) -> Result<Self, DeserializationError> {
+        self.map(|e| e.apply(max)).transpose()
     }
 }
 

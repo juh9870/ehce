@@ -20,7 +20,6 @@ struct FieldData {
 
 #[derive(Debug)]
 enum Modifier {
-    Optional,
     Min(Literal),
     Max(Literal),
 }
@@ -71,7 +70,7 @@ fn extract_generic(ty: &Type) -> Option<&Type> {
 fn serialized_type(
     ty: &Type,
     modifiers: &mut Vec<Modifier>,
-) -> Result<Option<proc_macro2::TokenStream>, Error> {
+) -> Result<proc_macro2::TokenStream, Error> {
     match ty {
         Type::Paren(ty) => return serialized_type(&ty.elem, modifiers),
         Type::Path(p) => {
@@ -87,25 +86,33 @@ fn serialized_type(
                             "Missing generic argument for SlabMapId",
                         ));
                     };
-                    // modifiers.push(Modifier::References {
-                    //     target: ref_type.clone(),
-                    // });
-                    return Ok(Some(quote_spanned!(ty.span() => crate::model::ItemId)));
+                    return Ok(quote_spanned!(ty.span() => crate::model::ItemId));
                 }
-                "Option" => {
-                    let Some(inner) = extract_generic(ty) else {
-                        return Err(Error::new(ty.span(), "Missing generic argument for Option"));
+                _ => {
+                    let PathArguments::AngleBracketed(args) = &end.arguments else {
+                        return Ok(quote! {#ty});
                     };
-                    modifiers.push(Modifier::Optional);
-                    let ty = serialized_type(inner, modifiers)?;
-                    return Ok(Some(quote_spanned! {ty.span() => Option<#ty>}));
+
+                    let out_args = args
+                        .args
+                        .iter()
+                        .map(|arg| match arg {
+                            GenericArgument::Type(ty) => serialized_type(ty, modifiers),
+                            arg => Ok(quote! {#arg}),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let mut out_ty: Vec<_> = p.path.segments.iter().collect();
+                    let _ = out_ty.pop();
+                    let out_ty: Vec<_> = out_ty.into_iter().map(|_e| quote! {e}).collect();
+                    let end_ty = &end.ident;
+                    return Ok(quote_spanned! {ty.span()=>#(#out_ty::)*#end_ty<#(#out_args),*>});
                 }
-                _ => {}
             }
         }
         _ => {}
     }
-    Ok(None)
+    Ok(quote! {#ty})
 }
 
 fn process(attr: TokenStream, mut data: ItemStruct) -> Result<TokenStream, Error> {
@@ -130,7 +137,7 @@ fn process(attr: TokenStream, mut data: ItemStruct) -> Result<TokenStream, Error
         let serialized_type = if let Some(ty) = &attribute_data.ty {
             quote!(#ty)
         } else {
-            serialized_type(ty, &mut modifiers)?.unwrap_or_else(|| quote!(#ty))
+            serialized_type(ty, &mut modifiers)?
         };
         let definition = quote_spanned!(field.span()=>#name: #serialized_type);
 
@@ -207,17 +214,6 @@ fn process(attr: TokenStream, mut data: ItemStruct) -> Result<TokenStream, Error
             let modifier_body = f.modifiers
                 .iter()
                 .rfold(quote!(#data), |stream, modifier| match modifier {
-                    Modifier::Optional => {
-                        quote! {
-                            if let Some(#data) = #data {
-                                Some({
-                                    #stream
-                                })
-                            } else {
-                                None
-                            }
-                        }
-                    }
                     Modifier::Min(num) => {
                         quote! {
                             let #data: #original_type = #err_handler_start #serialization_mod::ApplyMin::apply(#data, #num) #err_handler_end;
