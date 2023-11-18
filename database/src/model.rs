@@ -10,9 +10,13 @@ use strum_macros::{Display, EnumDiscriminants, EnumIs};
 
 use utils::slab_map::{SlabMap, SlabMapId, SlabMapKeyOrUntypedId, SlabMapUntypedId};
 
-mod serialization;
+pub mod characteristic;
+pub mod component;
+pub mod component_stats;
 pub mod ship;
 pub mod ship_build;
+
+mod serialization;
 
 #[derive(Debug, serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath)]
 #[serde(transparent)]
@@ -391,7 +395,13 @@ macro_rules! registry_raw {
 #[macro_export]
 macro_rules! call_with_all_models {
     ($macro_name:ident) => {
-        $macro_name!(ship: $crate::model::ship::Ship, ship_build: $crate::model::ship_build::ShipBuild);
+        $macro_name!(
+            ship: $crate::model::ship::Ship,
+            ship_build: $crate::model::ship_build::ShipBuild,
+            component_stats: $crate::model::component_stats::ComponentStats,
+            characteristic: $crate::model::characteristic::Characteristic,
+            component: $crate::model::component::Component,
+        );
     };
 }
 
