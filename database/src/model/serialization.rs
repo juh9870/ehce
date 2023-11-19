@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::{BuildHasher, Hash};
 
+use bevy::asset::Handle;
+use camino::Utf8PathBuf;
 use duplicate::duplicate_item;
 use miette::Diagnostic;
 use thiserror::Error;
@@ -16,10 +18,20 @@ pub enum DeserializationErrorKind {
     MissingItem(ItemId, DatabaseItemKind),
     #[error("Item <{}>`{}` is already declared", .1, .0)]
     DuplicateItem(ItemId, DatabaseItemKind),
+    #[error("Image `{}` is missing", .0)]
+    MissingImage(String),
+    #[error("Image name `{}` is contested by `{}` and `{}`", .name, .path_a, .path_b)]
+    DuplicateImage {
+        name: String,
+        path_a: Utf8PathBuf,
+        path_b: Utf8PathBuf,
+    },
     #[error("Value is too large, got {} where at most {} is expected.", .got, .limit)]
     ValueTooLarge { limit: f64, got: f64 },
     #[error("Value is too small, got {} where at least {} is expected.", .got, .limit)]
     ValueTooSmall { limit: f64, got: f64 },
+    #[error("File at `{}` doesn't have a name", .0)]
+    MissingName(Utf8PathBuf),
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +178,19 @@ impl<
                 Ok((k, v))
             })
             .collect()
+    }
+}
+
+impl ModelDeserializable<Handle<bevy::prelude::Image>> for String {
+    fn deserialize(
+        self,
+        registry: &mut PartialModRegistry,
+    ) -> Result<Handle<bevy::prelude::Image>, DeserializationError> {
+        if let Some(handle) = registry.assets.images.get(&self) {
+            Ok(handle.1.clone_weak())
+        } else {
+            Err(DeserializationErrorKind::MissingImage(self).into())
+        }
     }
 }
 

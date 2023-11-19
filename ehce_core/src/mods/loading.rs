@@ -7,7 +7,7 @@ use miette::IntoDiagnostic;
 use rustc_hash::FxHashSet;
 
 use database::model::{
-    DatabaseAsset, DatabaseItemKind, DatabaseItemSerialized, ModRegistry, RegistryId,
+    DatabaseAsset, DatabaseItemKind, ModRegistry, RegistryId,
 };
 
 use crate::mods::{
@@ -64,6 +64,7 @@ fn loader(
     asset_server: Res<AssetServer>,
     folder_assets: Res<Assets<LoadedFolder>>,
     database_items: Res<Assets<DatabaseAsset>>,
+    images: Res<Assets<Image>>,
     mut db_asset_events: ResMut<Events<AssetEvent<DatabaseAsset>>>,
     mut data: ResMut<LoadingStateData>,
     mut err_evt: EventWriter<ModLoadErrorEvent>,
@@ -127,26 +128,23 @@ fn loader(
     };
 
     info!("Mod assets are loaded");
-    let mut files = Vec::new();
+    let mut db_files = Vec::new();
+    let mut db_images = Vec::new();
     for handle in &folder.handles {
-        let Some(item) = database_items.get(handle) else {
-            continue;
-        };
+        if let Some(item) = database_items.get(handle) {
+            let Some(path) = asset_path(&asset_server, handle) else {
+                continue;
+            };
 
-        let Some(path) = asset_server.get_path(handle.id()) else {
-            error!(?handle, id=?handle.id(), "Failed to fetch path for a database item");
-            continue;
-        };
-
-        let path = path.path();
-        let Ok(path) = Utf8PathBuf::try_from(path.to_path_buf()) else {
-            error!(path=path.to_string_lossy().to_string(), raw_path=?path, ?handle, id=?handle.id(), "Asset path contains non-UTF8 symbols");
-            continue;
-        };
-
-        files.push((path, item));
+            db_files.push((path, item));
+        } else if images.contains(handle) {
+            let Some(path) = asset_path(&asset_server, handle) else {
+                continue;
+            };
+            db_images.push((path, handle.clone_weak().typed::<Image>()));
+        }
     }
-    match construct_mod(path, data.folder_handle.clone(), files) {
+    match construct_mod(path, data.folder_handle.clone(), db_files, db_images) {
         Ok(data) => {
             info!("Mod is constructed, sending events");
             switch_evt.send(ModLoadedEvent(data));
@@ -170,6 +168,21 @@ pub fn available_mods(
                 })
             })
         })
+}
+
+fn asset_path(asset_server: &AssetServer, handle: &UntypedHandle) -> Option<Utf8PathBuf> {
+    let Some(path) = asset_server.get_path(handle.id()) else {
+        error!(?handle, id=?handle.id(), "Failed to fetch path for a database item");
+        return None;
+    };
+
+    let path = path.path();
+    let Ok(path) = Utf8PathBuf::try_from(path.to_path_buf()) else {
+        error!(path=path.to_string_lossy().to_string(), raw_path=?path, ?handle, id=?handle.id(), "Asset path contains non-UTF8 symbols");
+        return None;
+    };
+
+    Some(path)
 }
 
 fn asset_tracer(
@@ -342,16 +355,11 @@ fn construct_mod<'a>(
     mod_path: AssetPath,
     folder_handle: Handle<LoadedFolder>,
     files: impl IntoIterator<Item = (Utf8PathBuf, &'a DatabaseAsset)>,
+    images: impl IntoIterator<Item = (Utf8PathBuf, Handle<Image>)>,
 ) -> miette::Result<ModData> {
-    let assets: Vec<DatabaseItemSerialized> = files
-        .into_iter()
-        .map(|(_, item)| item.0.clone().into_serialized())
-        .collect();
-
-    let registry = match ModRegistry::build(assets) {
+    let registry = match ModRegistry::build(files, images) {
         Ok(data) => data,
         Err(err) => {
-            report_error(err.clone());
             return Err(err.into());
         }
     };

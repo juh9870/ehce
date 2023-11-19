@@ -2,6 +2,8 @@ use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
+use bevy::{asset::Handle, render::texture::Image};
+use camino::{Utf8Path, Utf8PathBuf};
 use duplicate::duplicate_item;
 use itertools::Itertools;
 use paste::paste;
@@ -20,22 +22,7 @@ mod serialization;
 
 #[derive(Debug, serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath)]
 #[serde(transparent)]
-pub struct DatabaseAsset(pub VersionedDatabaseItem);
-
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(tag = "version")]
-pub enum VersionedDatabaseItem {
-    #[serde(rename = "0")]
-    V0(DatabaseItemSerialized),
-}
-
-impl VersionedDatabaseItem {
-    pub fn into_serialized(self) -> DatabaseItemSerialized {
-        match self {
-            VersionedDatabaseItem::V0(item) => item,
-        }
-    }
-}
+pub struct DatabaseAsset(pub DatabaseItemSerialized);
 
 pub trait DatabaseItemTrait {
     fn id(&self) -> SlabMapUntypedId;
@@ -274,12 +261,13 @@ impl<'a> DatabaseItemRef<'a> {
 }
 
 impl ModRegistry {
-    pub fn build(
-        items: impl IntoIterator<Item = DatabaseItemSerialized>,
+    pub fn build<'a>(
+        items: impl IntoIterator<Item = (Utf8PathBuf, &'a DatabaseAsset)>,
+        images: impl IntoIterator<Item = (Utf8PathBuf, Handle<Image>)>,
     ) -> Result<Self, serialization::DeserializationError> {
         let mut raws = RawModRegistry::default();
-        for item in items.into_iter() {
-            if let Err(item) = raws.insert(item) {
+        for (_path, item) in items.into_iter() {
+            if let Err(item) = raws.insert(item.0.clone()) {
                 return Err(serialization::DeserializationErrorKind::DuplicateItem(
                     item.id().clone(),
                     item.kind(),
@@ -288,13 +276,47 @@ impl ModRegistry {
             }
         }
 
+        let mut assets = ModAssets::default();
+
+        images
+            .into_iter()
+            .try_for_each(|(path, image): (Utf8PathBuf, Handle<Image>)| {
+                let Some(name) = path
+                    .file_name()
+                    .and_then(|e| Utf8Path::file_stem(e.as_ref()))
+                else {
+                    return Err(serialization::DeserializationErrorKind::MissingName(path));
+                };
+
+                match assets.images.entry(name.to_string()) {
+                    Entry::Occupied(e) => {
+                        return Err(serialization::DeserializationErrorKind::DuplicateImage {
+                            name: name.to_string(),
+                            path_a: e.get().0.clone(),
+                            path_b: path,
+                        })
+                    }
+                    Entry::Vacant(e) => {
+                        e.insert((path, image));
+                    }
+                }
+
+                Ok(())
+            })?;
+
         let partial = PartialModRegistry {
             raw: raws,
+            assets,
             ..Default::default()
         };
 
         partial.deserialize()
     }
+}
+
+#[derive(Debug, Default)]
+struct ModAssets {
+    pub images: FxHashMap<String, (Utf8PathBuf, Handle<Image>)>,
 }
 
 macro_rules! registry_partial {
@@ -303,6 +325,7 @@ macro_rules! registry_partial {
             #[derive(Debug, Default)]
             pub(crate) struct PartialModRegistry {
                 raw: RawModRegistry,
+                assets: ModAssets,
                 $(
                     pub $name: ModelStore<Option<$ty>>,
                 )*

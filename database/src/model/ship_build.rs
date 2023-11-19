@@ -9,6 +9,14 @@ use super::ship::Ship;
 pub struct ShipBuild {
     #[model(id)]
     pub id: SlabMapId<ShipBuild>,
+
+    #[model(ty=ShipBuildDataSerialized)]
+    pub data: ShipBuildData,
+}
+
+#[database_model]
+#[derive(Debug, Clone)]
+pub struct ShipBuildData {
     pub ship: SlabMapId<Ship>,
     #[model(ty=Vec<InstalledComponentSerialized>)]
     pub components: Vec<InstalledComponent>,
@@ -18,5 +26,11 @@ pub struct ShipBuild {
 #[derive(Debug, Clone)]
 pub struct InstalledComponent {
     pub component: SlabMapId<Component>,
-    pub pos: Option<glam::u32::UVec2>,
+    pub pos: glam::u32::UVec2,
+}
+
+impl AsRef<ShipBuildData> for ShipBuild {
+    fn as_ref(&self) -> &ShipBuildData {
+        &self.data
+    }
 }

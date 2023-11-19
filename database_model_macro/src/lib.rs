@@ -69,10 +69,10 @@ fn extract_generic(ty: &Type) -> Option<&Type> {
 
 fn serialized_type(
     ty: &Type,
-    modifiers: &mut Vec<Modifier>,
+    _modifiers: &mut Vec<Modifier>,
 ) -> Result<proc_macro2::TokenStream, Error> {
     match ty {
-        Type::Paren(ty) => return serialized_type(&ty.elem, modifiers),
+        Type::Paren(ty) => return serialized_type(&ty.elem, _modifiers),
         Type::Path(p) => {
             let Some(end) = p.path.segments.last() else {
                 return Err(Error::new(p.span(), "Empty path type"));
@@ -89,6 +89,13 @@ fn serialized_type(
                     return Ok(quote_spanned!(ty.span() => crate::model::ItemId));
                 }
                 _ => {
+                    let end_name = match end.ident.to_string().as_str() {
+                        "Handle" => return Ok(quote_spanned! {ty.span()=>String}),
+                        _ => {
+                            let ident = &end.ident;
+                            quote! {#ident}
+                        }
+                    };
                     let PathArguments::AngleBracketed(args) = &end.arguments else {
                         return Ok(quote! {#ty});
                     };
@@ -97,7 +104,7 @@ fn serialized_type(
                         .args
                         .iter()
                         .map(|arg| match arg {
-                            GenericArgument::Type(ty) => serialized_type(ty, modifiers),
+                            GenericArgument::Type(ty) => serialized_type(ty, _modifiers),
                             arg => Ok(quote! {#arg}),
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -105,8 +112,7 @@ fn serialized_type(
                     let mut out_ty: Vec<_> = p.path.segments.iter().collect();
                     let _ = out_ty.pop();
                     let out_ty: Vec<_> = out_ty.into_iter().map(|_e| quote! {e}).collect();
-                    let end_ty = &end.ident;
-                    return Ok(quote_spanned! {ty.span()=>#(#out_ty::)*#end_ty<#(#out_args),*>});
+                    return Ok(quote_spanned! {ty.span()=>#(#out_ty::)*#end_name<#(#out_args),*>});
                 }
             }
         }
