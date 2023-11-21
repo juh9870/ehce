@@ -281,8 +281,8 @@ impl ModRegistry {
         images
             .into_iter()
             .try_for_each(|(path, image): (_, Handle<Image>)| {
-                let path = path.as_ref();
-                let Some(name) = path.file_name().and_then(|e| Path::file_stem(e.as_ref())) else {
+                let path: &Path = path.as_ref();
+                let Some(name) = path.file_name() else {
                     return Err(serialization::DeserializationErrorKind::MissingName(
                         path.to_path_buf(),
                     ));
@@ -294,7 +294,7 @@ impl ModRegistry {
                     ));
                 };
 
-                match assets.images.entry(name.to_string()) {
+                match assets.images.entry(name.to_ascii_lowercase()) {
                     Entry::Occupied(e) => {
                         return Err(serialization::DeserializationErrorKind::DuplicateImage {
                             name: name.to_string(),

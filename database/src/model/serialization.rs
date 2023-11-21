@@ -188,9 +188,10 @@ impl<
 
 impl ModelDeserializable<Handle<bevy::prelude::Image>> for String {
     fn deserialize(
-        self,
+        mut self,
         registry: &mut PartialModRegistry,
     ) -> Result<Handle<bevy::prelude::Image>, DeserializationError> {
+        self.make_ascii_lowercase();
         if let Some(handle) = registry.assets.images.get(&self) {
             Ok(handle.1.clone_weak())
         } else {
