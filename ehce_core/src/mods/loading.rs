@@ -1,14 +1,13 @@
-use bevy::asset::{AssetPath, LoadState, LoadedFolder, UntypedAssetId};
+use bevy::asset::{LoadState, LoadedFolder, UntypedAssetId};
 use bevy::core::FrameCount;
 use bevy::prelude::*;
-use camino::{Utf8Path, Utf8PathBuf};
 use database::call_with_all_models;
-use miette::IntoDiagnostic;
+use miette::Diagnostic;
 use rustc_hash::FxHashSet;
+use std::path::{Path, PathBuf};
+use utils::miette_ext::DiagnosticWrapper;
 
-use database::model::{
-    DatabaseAsset, DatabaseItemKind, ModRegistry, RegistryId,
-};
+use database::model::{DatabaseAsset, DatabaseItemKind, ModRegistry, RegistryId};
 
 use crate::mods::{
     ModData, ModHotReloadEvent, ModLoadErrorEvent, ModLoadedEvent, ModState,
@@ -144,17 +143,26 @@ fn loader(
             db_images.push((path, handle.clone_weak().typed::<Image>()));
         }
     }
-    match construct_mod(path, data.folder_handle.clone(), db_files, db_images) {
+
+    match construct_mod(
+        path.path().to_path_buf(),
+        data.folder_handle.clone(),
+        db_files,
+        db_images,
+    ) {
         Ok(data) => {
             info!("Mod is constructed, sending events");
             switch_evt.send(ModLoadedEvent(data));
         }
-        Err(err) => report_error(err.context("While loading a mod")),
+        Err(err) => {
+            report_error(err.wrap("Failed to load a mod"));
+            err_evt.send(ModLoadErrorEvent);
+        }
     }
 }
 
-pub fn available_mods(
-    folders: impl IntoIterator<Item = impl AsRef<Utf8Path>>,
+pub fn available_mods<'a>(
+    folders: impl IntoIterator<Item = impl AsRef<&'a Path>>,
 ) -> impl Iterator<Item = String> {
     folders
         .into_iter()
@@ -170,19 +178,13 @@ pub fn available_mods(
         })
 }
 
-fn asset_path(asset_server: &AssetServer, handle: &UntypedHandle) -> Option<Utf8PathBuf> {
+fn asset_path(asset_server: &AssetServer, handle: &UntypedHandle) -> Option<PathBuf> {
     let Some(path) = asset_server.get_path(handle.id()) else {
         error!(?handle, id=?handle.id(), "Failed to fetch path for a database item");
         return None;
     };
 
-    let path = path.path();
-    let Ok(path) = Utf8PathBuf::try_from(path.to_path_buf()) else {
-        error!(path=path.to_string_lossy().to_string(), raw_path=?path, ?handle, id=?handle.id(), "Asset path contains non-UTF8 symbols");
-        return None;
-    };
-
-    Some(path)
+    Some(path.path().to_path_buf())
 }
 
 fn asset_tracer(
@@ -351,16 +353,16 @@ pub enum InternalHotReloadEvent {
     Single(RegistryId),
 }
 
-fn construct_mod<'a>(
-    mod_path: AssetPath,
+fn construct_mod<'a, 'path>(
+    mod_path: PathBuf,
     folder_handle: Handle<LoadedFolder>,
-    files: impl IntoIterator<Item = (Utf8PathBuf, &'a DatabaseAsset)>,
-    images: impl IntoIterator<Item = (Utf8PathBuf, Handle<Image>)>,
-) -> miette::Result<ModData> {
+    files: impl IntoIterator<Item = (impl AsRef<Path>, &'a DatabaseAsset)>,
+    images: impl IntoIterator<Item = (impl AsRef<Path>, Handle<Image>)>,
+) -> Result<ModData, impl Diagnostic + 'static> {
     let registry = match ModRegistry::build(files, images) {
         Ok(data) => data,
         Err(err) => {
-            return Err(err.into());
+            return Err(err.diagnostic());
         }
     };
 
@@ -390,7 +392,7 @@ fn construct_mod<'a>(
     // }
     Ok(ModData {
         registry,
-        mod_path: Utf8PathBuf::try_from(mod_path.path().to_path_buf()).into_diagnostic()?,
+        mod_path,
         folder_handle,
         // assets: asset_paths,
     })

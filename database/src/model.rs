@@ -1,9 +1,9 @@
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
+use std::path::{Path, PathBuf};
 
 use bevy::{asset::Handle, render::texture::Image};
-use camino::{Utf8Path, Utf8PathBuf};
 use duplicate::duplicate_item;
 use itertools::Itertools;
 use paste::paste;
@@ -262,8 +262,8 @@ impl<'a> DatabaseItemRef<'a> {
 
 impl ModRegistry {
     pub fn build<'a>(
-        items: impl IntoIterator<Item = (Utf8PathBuf, &'a DatabaseAsset)>,
-        images: impl IntoIterator<Item = (Utf8PathBuf, Handle<Image>)>,
+        items: impl IntoIterator<Item = (impl AsRef<Path>, &'a DatabaseAsset)>,
+        images: impl IntoIterator<Item = (impl AsRef<Path>, Handle<Image>)>,
     ) -> Result<Self, serialization::DeserializationError> {
         let mut raws = RawModRegistry::default();
         for (_path, item) in items.into_iter() {
@@ -280,12 +280,18 @@ impl ModRegistry {
 
         images
             .into_iter()
-            .try_for_each(|(path, image): (Utf8PathBuf, Handle<Image>)| {
-                let Some(name) = path
-                    .file_name()
-                    .and_then(|e| Utf8Path::file_stem(e.as_ref()))
-                else {
-                    return Err(serialization::DeserializationErrorKind::MissingName(path));
+            .try_for_each(|(path, image): (_, Handle<Image>)| {
+                let path = path.as_ref();
+                let Some(name) = path.file_name().and_then(|e| Path::file_stem(e.as_ref())) else {
+                    return Err(serialization::DeserializationErrorKind::MissingName(
+                        path.to_path_buf(),
+                    ));
+                };
+
+                let Some(name) = name.to_str() else {
+                    return Err(serialization::DeserializationErrorKind::NonUtf8Path(
+                        path.to_path_buf(),
+                    ));
                 };
 
                 match assets.images.entry(name.to_string()) {
@@ -293,11 +299,11 @@ impl ModRegistry {
                         return Err(serialization::DeserializationErrorKind::DuplicateImage {
                             name: name.to_string(),
                             path_a: e.get().0.clone(),
-                            path_b: path,
+                            path_b: path.to_path_buf(),
                         })
                     }
                     Entry::Vacant(e) => {
-                        e.insert((path, image));
+                        e.insert((path.to_path_buf(), image));
                     }
                 }
 
@@ -316,7 +322,7 @@ impl ModRegistry {
 
 #[derive(Debug, Default)]
 struct ModAssets {
-    pub images: FxHashMap<String, (Utf8PathBuf, Handle<Image>)>,
+    pub images: FxHashMap<String, (PathBuf, Handle<Image>)>,
 }
 
 macro_rules! registry_partial {

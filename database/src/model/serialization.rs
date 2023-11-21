@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::{BuildHasher, Hash};
+use std::path::PathBuf;
 
 use bevy::asset::Handle;
-use camino::Utf8PathBuf;
+
 use duplicate::duplicate_item;
 use miette::Diagnostic;
 use thiserror::Error;
@@ -12,26 +13,30 @@ use utils::slab_map::{SlabMap, SlabMapDuplicateError, SlabMapId};
 
 use crate::model::{DatabaseItemKind, ItemId, ModelKind, PartialModRegistry};
 
-#[derive(Debug, Error, Diagnostic, Clone)]
+mod diagnostic;
+
+#[derive(Debug, Error, Clone)]
 pub enum DeserializationErrorKind {
-    #[error("Item <{}>`{}` is missing", .1, .0)]
+    #[error("Item {}({}) is missing", .1, .0)]
     MissingItem(ItemId, DatabaseItemKind),
-    #[error("Item <{}>`{}` is already declared", .1, .0)]
+    #[error("Item {}({}) is already declared", .1, .0)]
     DuplicateItem(ItemId, DatabaseItemKind),
     #[error("Image `{}` is missing", .0)]
     MissingImage(String),
-    #[error("Image name `{}` is contested by `{}` and `{}`", .name, .path_a, .path_b)]
+    #[error("Image name `{}` is contested by `{}` and `{}`", .name, .path_a.to_string_lossy(), .path_b.to_string_lossy())]
     DuplicateImage {
         name: String,
-        path_a: Utf8PathBuf,
-        path_b: Utf8PathBuf,
+        path_a: PathBuf,
+        path_b: PathBuf,
     },
     #[error("Value is too large, got {} where at most {} is expected.", .got, .limit)]
     ValueTooLarge { limit: f64, got: f64 },
     #[error("Value is too small, got {} where at least {} is expected.", .got, .limit)]
     ValueTooSmall { limit: f64, got: f64 },
-    #[error("File at `{}` doesn't have a name", .0)]
-    MissingName(Utf8PathBuf),
+    #[error("File at `{}` doesn't have a name", .0.to_string_lossy())]
+    MissingName(PathBuf),
+    #[error("File path at `{}` is not UTF8", .0.to_string_lossy())]
+    NonUtf8Path(PathBuf),
 }
 
 #[derive(Debug, Clone)]
@@ -65,7 +70,7 @@ impl Display for DeserializationError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.kind)?;
         for item in &self.stack {
-            write!(f, "{}", item)?;
+            write!(f, "\n{}", item)?;
         }
         Ok(())
     }
@@ -173,7 +178,7 @@ impl<
                     e.context(DeserializationErrorStackItem::MapEntry(k.to_string()))
                 })?;
                 // TODO: providing context here requires cloning a key, which is
-                // less than desireable, but not providing context is pretty bad
+                // less than desirable, but not providing context is pretty bad
                 let k = k.deserialize(registry)?;
                 Ok((k, v))
             })

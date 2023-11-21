@@ -69,5 +69,5 @@ pub fn cleanup_state_object<T: Resource>(mut commands: Commands) {
 }
 
 pub fn report_error(err: impl Into<miette::Report>) {
-    error!(err=?err.into(), "Something gone wrong")
+    error!("Something gone wrong.\n{:?}", err.into())
 }

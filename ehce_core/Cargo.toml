@@ -6,7 +6,6 @@ edition = "2021"
 
 [dependencies]
 bevy = { workspace = true, default-features = false, features = ["png", "jpeg", "bevy_asset", "async-io"] }
-camino = { workspace = true }
 database = { path = "../database" }
 miette = { workspace = true }
 paste = { workspace = true }

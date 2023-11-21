@@ -1,6 +1,7 @@
 use bimap::BiHashMap;
 use std::hash::BuildHasherDefault;
 
+pub mod miette_ext;
 pub mod slab_map;
 
 pub type FxBiHashMap<

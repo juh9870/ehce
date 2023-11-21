@@ -1,8 +1,8 @@
 use bevy::app::{App, Plugin};
 use bevy::asset::{Handle, LoadedFolder};
 use bevy::prelude::{Event, Resource, States};
-use camino::Utf8PathBuf;
 use database::model::{ModRegistry, RegistryId};
+use std::path::PathBuf;
 
 use utils::slab_map::SlabMapId;
 
@@ -26,7 +26,7 @@ impl Plugin for ModPlugin {
 #[derive(Debug, Resource)]
 pub struct ModData {
     pub registry: ModRegistry,
-    pub mod_path: Utf8PathBuf,
+    pub mod_path: PathBuf,
     pub folder_handle: Handle<LoadedFolder>,
     // pub assets: FxBiHashMap<Utf8PathBuf, RegistryId>,
 }
