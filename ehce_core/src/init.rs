@@ -11,7 +11,7 @@ pub struct InitPlugin;
 impl Plugin for InitPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Init), load_last_mod)
-            .add_systems(Update, init_tick.run_if(in_state(GameState::Init)));
+            .add_systems(PostUpdate, init_tick.run_if(in_state(GameState::Init)));
     }
 }
 
