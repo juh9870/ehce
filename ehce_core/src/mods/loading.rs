@@ -10,7 +10,7 @@ use utils::miette_ext::DiagnosticWrapper;
 use database::model::{DatabaseAsset, DatabaseItemKind, ModRegistry, RegistryId};
 
 use crate::mods::{
-    ModData, ModHotReloadEvent, ModLoadErrorEvent, ModLoadedEvent, ModState,
+    HotReloading, ModData, ModHotReloadEvent, ModLoadErrorEvent, ModLoadedEvent, ModState,
     ModUntypedHotReloadEvent, WantLoadModEvent,
 };
 use crate::{report_error, SimpleStateObjectPlugin};
@@ -28,12 +28,25 @@ impl Plugin for ModLoadingPlugin {
             SimpleStateObjectPlugin::<_, LoadingStateData>::new(ModState::Loading),
             TypedHotReloadEventsPlugin,
         ))
-        .add_systems(Update, mod_load)
-        .add_systems(Update, loader.run_if(in_state(ModState::Loading)))
-        .add_systems(OnExit(ModState::Loading), clear_hot_reload_events)
-        .add_systems(Update, hot_reload.run_if(in_state(ModState::Ready)))
-        .add_systems(Update, asset_tracer.before(hot_reload))
-        .add_systems(Update, hot_reload_events.after(hot_reload));
+        .add_systems(
+            Update,
+            (
+                loading_initializer,
+                loader.run_if(in_state(ModState::Loading)),
+            )
+                .chain(),
+        )
+        .add_systems(OnEnter(ModState::Ready), clear_hot_reload_events)
+        .add_systems(
+            First,
+            (
+                asset_tracer,
+                hot_reload.run_if(in_state(ModState::Ready)),
+                hot_reload_events,
+            )
+                .chain()
+                .in_set(HotReloading),
+        );
     }
 }
 
@@ -44,7 +57,7 @@ struct LoadingStateData {
 }
 
 // If multiple mod load events are passed in a frame, only the last one is handled
-fn mod_load(
+fn loading_initializer(
     mut evt: EventReader<WantLoadModEvent>,
     asset_server: Res<AssetServer>,
     mut commands: Commands,

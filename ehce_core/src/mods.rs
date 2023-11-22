@@ -1,6 +1,6 @@
 use bevy::app::{App, Plugin};
 use bevy::asset::{Handle, LoadedFolder};
-use bevy::prelude::{Event, Resource, States};
+use bevy::prelude::{Event, First, Resource, States, SystemSet};
 use database::model::{ModRegistry, RegistryId};
 use std::path::PathBuf;
 
@@ -15,6 +15,7 @@ pub struct ModPlugin;
 
 impl Plugin for ModPlugin {
     fn build(&self, app: &mut App) {
+        app.configure_sets(First, HotReloading);
         app.add_state::<ModState>()
             .add_event::<WantLoadModEvent>()
             .add_event::<ModLoadErrorEvent>()
@@ -85,3 +86,6 @@ pub enum ModHotReloadEvent<T> {
     /// Payload is the registry ID of a changed asset
     Single(SlabMapId<T>),
 }
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct HotReloading;
