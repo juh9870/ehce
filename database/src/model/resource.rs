@@ -1,5 +1,6 @@
 use crate::model::serialization::{
-    DeserializationError, DeserializeFrom, ModelDeserializable, ModelDeserializableFallbackType,
+    DeserializationError, DeserializationErrorStackItem, DeserializeFrom, ModelDeserializable,
+    ModelDeserializableFallbackType,
 };
 use crate::model::PartialModRegistry;
 use database_model_macro::database_model;
@@ -36,7 +37,11 @@ impl ModelDeserializable<Formula> for &str {
         let args = formula
             .var_names()
             .iter()
-            .map(|id| SlabMapId::<Resource>::deserialize_from(id.as_str(), registry))
+            .map(|id| {
+                SlabMapId::<Resource>::deserialize_from(id.as_str(), registry).map_err(|e| {
+                    e.context(DeserializationErrorStackItem::ExprVariable(id.to_string()))
+                })
+            })
             .try_collect()?;
 
         Ok(Formula {

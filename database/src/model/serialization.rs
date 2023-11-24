@@ -49,6 +49,7 @@ pub enum DeserializationErrorStackItem {
     Field(&'static str),
     Index(usize),
     MapEntry(String), // all JSON keys are strings, so we expect deserialized value to be reasonably displayable
+    ExprVariable(String),
 }
 
 impl Display for DeserializationErrorStackItem {
@@ -59,6 +60,9 @@ impl Display for DeserializationErrorStackItem {
             DeserializationErrorStackItem::Index(i) => write!(f, "In item at position {i}"),
             DeserializationErrorStackItem::MapEntry(name) => {
                 write!(f, "In map entry with key `{name}`")
+            }
+            DeserializationErrorStackItem::ExprVariable(name) => {
+                write!(f, "In expression variable `{name}`")
             }
         }
     }

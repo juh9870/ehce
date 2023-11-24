@@ -26,6 +26,9 @@ impl Display for ItemDiagnosticKind {
                 DeserializationErrorStackItem::MapEntry(key) => {
                     write!(f, "Failed to deserialize map entry with key `{key}`")
                 }
+                DeserializationErrorStackItem::ExprVariable(name) => {
+                    write!(f, "Failed to resolve expression variable `{name}`")
+                }
             },
             ItemDiagnosticKind::Cause(cause) => {
                 write!(f, "{cause}")
