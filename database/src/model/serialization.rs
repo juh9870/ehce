@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use bevy::asset::Handle;
 
 use duplicate::{duplicate, duplicate_item};
+use exmex::ExError;
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -38,6 +39,8 @@ pub enum DeserializationErrorKind {
     MissingName(PathBuf),
     #[error("File path at `{}` is not UTF8", .0.to_string_lossy())]
     NonUtf8Path(PathBuf),
+    #[error("Failed to parse an expression: {}", .0)]
+    BadExpression(ExError),
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +93,12 @@ impl From<DeserializationErrorKind> for DeserializationError {
             kind: value,
             stack: Default::default(),
         }
+    }
+}
+
+impl From<ExError> for DeserializationError {
+    fn from(value: ExError) -> Self {
+        DeserializationErrorKind::BadExpression(value).into()
     }
 }
 

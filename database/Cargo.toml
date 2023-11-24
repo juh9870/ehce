@@ -13,6 +13,7 @@ bevy = { workspace = true, default-features = false, features = [
 ] }
 database_model_macro = { path = "../database_model_macro" }
 duplicate = { workspace = true }
+exmex = { workspace = true }
 glam = { workspace = true, features = ["serde"] }
 itertools = { workspace = true }
 miette = { workspace = true }

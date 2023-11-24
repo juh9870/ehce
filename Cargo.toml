@@ -39,6 +39,7 @@ strum_macros = "0.25"
 syn = "2.0"
 thiserror = "1"
 tracing = "0.1"
+exmex = "0.18"
 
 [profile.release]
 opt-level = 3
