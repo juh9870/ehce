@@ -25,24 +25,6 @@ struct AttributeInput {
     name: Option<String>,
 }
 
-fn extract_generic(ty: &Type) -> Option<&Type> {
-    match ty {
-        Type::Paren(ty) => extract_generic(&ty.elem),
-        Type::Path(path) => {
-            let end = path.path.segments.last()?;
-            let PathArguments::AngleBracketed(args) = &end.arguments else {
-                return None;
-            };
-            let Some(GenericArgument::Type(arg)) = args.args.first() else {
-                return None;
-            };
-
-            Some(arg)
-        }
-        _ => None,
-    }
-}
-
 fn fallthrough(attrs: &mut Vec<syn::Attribute>) -> Vec<proc_macro2::TokenStream> {
     let mut inner_attrs = vec![];
     let mut i = 0;
