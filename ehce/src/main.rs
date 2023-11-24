@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 fn main() {
+    color_backtrace::install();
     App::new()
         .add_plugins((DefaultPlugins.set(AssetPlugin {
             mode: AssetMode::Processed,
