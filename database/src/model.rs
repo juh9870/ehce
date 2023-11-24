@@ -12,9 +12,9 @@ use strum_macros::{Display, EnumDiscriminants, EnumIs};
 
 use utils::slab_map::{SlabMap, SlabMapId, SlabMapKeyOrUntypedId, SlabMapUntypedId};
 
-pub mod characteristic;
 pub mod component;
 pub mod component_stats;
+pub mod resource;
 pub mod ship;
 pub mod ship_build;
 
@@ -431,7 +431,7 @@ macro_rules! call_with_all_models {
             ship: $crate::model::ship::Ship,
             ship_build: $crate::model::ship_build::ShipBuild,
             component_stats: $crate::model::component_stats::ComponentStats,
-            characteristic: $crate::model::characteristic::Characteristic,
+            resource: $crate::model::resource::Resource,
             component: $crate::model::component::Component,
         );
     };
