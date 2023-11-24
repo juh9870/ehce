@@ -233,16 +233,16 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                 }
             }
 
-            impl #serialization_mod::ModelDeserializable<#model_mod::SlabMapId<#model_name>> for #model_mod::ItemId {
+            impl #serialization_mod::ModelDeserializable<#model_mod::SlabMapId<#model_name>> for &str {
                 fn deserialize(
                     self,
                     registry: &mut #model_mod::PartialModRegistry,
                 ) -> Result<#model_mod::SlabMapId<#model_name>, #serialization_mod::DeserializationError> {
-                    if let Some(id) = #serialization_mod::get_reserved_key(&mut registry.#map_name, &self) {
+                    if let Some(id) = #serialization_mod::get_reserved_key(&mut registry.#map_name, self) {
                         return Ok(id)
                     }
-                    let Some(other) = registry.raw.#map_name.remove(&self) else {
-                        return Err(#serialization_mod::DeserializationErrorKind::MissingItem(self, #model_mod::DatabaseItemKind::#kind_name).into());
+                    let Some(other) = registry.raw.#map_name.remove(self) else {
+                        return Err(#serialization_mod::DeserializationErrorKind::MissingItem(self.to_string(), #model_mod::DatabaseItemKind::#kind_name).into());
                     };
 
                     other.deserialize(registry)

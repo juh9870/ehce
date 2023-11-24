@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::{BuildHasher, Hash};
@@ -231,6 +232,29 @@ impl<T: DatabaseItemTrait> ModelDeserializableFallbackType for SlabMapId<T> {
     type Serialized = ItemId;
 }
 
+impl<T> ModelDeserializable<T> for String
+where
+    for<'a> &'a str: ModelDeserializable<T>,
+{
+    fn deserialize(self, registry: &mut PartialModRegistry) -> Result<T, DeserializationError> {
+        self.as_str().deserialize(registry)
+    }
+}
+
+pub(crate) trait DeserializeFrom: Sized {
+    fn deserialize_from<U>(
+        data: U,
+        registry: &mut PartialModRegistry,
+    ) -> Result<Self, DeserializationError>
+    where
+        U: ModelDeserializable<Self>,
+    {
+        data.deserialize(registry)
+    }
+}
+
+impl<T> DeserializeFrom for T {}
+
 #[duplicate_item(
     ty trait_name err op(a,b);
     duplicate!{
@@ -302,10 +326,14 @@ pub(crate) fn insert_reserved<T>(
     reservation.0
 }
 
-pub(crate) fn get_reserved_key<T>(
+pub(crate) fn get_reserved_key<T, Q>(
     map: &mut SlabMap<ItemId, Option<T>>,
-    key: &ItemId,
-) -> Option<SlabMapId<T>> {
+    key: &Q,
+) -> Option<SlabMapId<T>>
+where
+    ItemId: Borrow<Q>,
+    Q: Hash + Eq + ?Sized,
+{
     map.key_to_id(key)
         .map(|e| e.as_untyped().as_typed_unchecked())
 }

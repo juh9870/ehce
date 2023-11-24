@@ -104,12 +104,15 @@ impl RegistryId {
 }
 
 #[derive(Debug, Clone)]
-pub struct RegistryKeyOrId<T: Borrow<ItemId>> {
+pub struct RegistryKeyOrId<T> {
     kind: DatabaseItemKind,
     id: SlabMapKeyOrUntypedId<T>,
 }
 
-impl<T: Borrow<ItemId>> RegistryKeyOrId<T> {
+impl<T: Hash + Eq> RegistryKeyOrId<T>
+where
+    ItemId: Borrow<T>,
+{
     pub fn kind(&self) -> DatabaseItemKind {
         self.kind
     }
@@ -223,7 +226,7 @@ macro_rules! registry {
             }
 
             impl ModRegistry {
-                pub fn get<T: Borrow<ItemId>>(&self, id: RegistryKeyOrId<T>) -> Option<DatabaseItemRef> {
+                pub fn get(&self, id: RegistryKeyOrId<ItemId>) -> Option<DatabaseItemRef> {
                     match id.kind {
                         $(
                             DatabaseItemKind::[<$name:camel>] => self.$name.get_by_untyped(id.id).map(DatabaseItemRef::from),
