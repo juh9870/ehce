@@ -14,7 +14,7 @@ pub struct Resource {
     #[model(id)]
     pub id: SlabMapId<Resource>,
     pub name: String,
-    pub eval: Option<Formula>,
+    pub computed: Option<Formula>,
 }
 
 #[derive(Debug, Clone)]
