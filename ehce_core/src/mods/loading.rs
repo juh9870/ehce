@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use database::call_with_all_models;
 use miette::Diagnostic;
 use rustc_hash::FxHashSet;
+use std::any::TypeId;
 use std::path::{Path, PathBuf};
 use utils::miette_ext::DiagnosticWrapper;
 
@@ -91,6 +92,7 @@ fn loader(
             return;
         }
         LoadState::Failed => {
+            error!("Failed to load mod files");
             err_evt.send(ModLoadErrorEvent);
             return;
         }
@@ -142,18 +144,29 @@ fn loader(
     info!("Mod assets are loaded");
     let mut db_files = Vec::new();
     let mut db_images = Vec::new();
+    let asset_type_id = TypeId::of::<DatabaseAsset>();
+    let image_type_id = TypeId::of::<Image>();
     for handle in &folder.handles {
-        if let Some(item) = database_items.get(handle) {
-            let Some(path) = asset_path(&asset_server, handle) else {
-                continue;
-            };
+        match handle.type_id() {
+            id if id == asset_type_id => {
+                let Some(item) = database_items.get(handle) else {
+                    continue;
+                };
+                let Some(path) = asset_path(&asset_server, handle) else {
+                    continue;
+                };
 
-            db_files.push((path, item));
-        } else if images.contains(handle) {
-            let Some(path) = asset_path(&asset_server, handle) else {
+                db_files.push((path, item));
+            }
+            id if id == image_type_id && images.contains(handle) => {
+                let Some(path) = asset_path(&asset_server, handle) else {
+                    continue;
+                };
+                db_images.push((path, handle.clone_weak().typed::<Image>()));
+            }
+            _ => {
                 continue;
-            };
-            db_images.push((path, handle.clone_weak().typed::<Image>()));
+            }
         }
     }
 

@@ -25,7 +25,7 @@ fn init_tick(
     if errors.read().next().is_some() {
         state.set(GameState::Error);
         mod_state.set(ModState::None);
-        info!("Got a mod loading error during initialization, switching to error state");
+        warn!("Got a mod loading error during initialization, switching to error state");
         return;
     }
 
