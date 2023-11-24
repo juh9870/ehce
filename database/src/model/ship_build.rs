@@ -9,8 +9,7 @@ use super::ship::Ship;
 pub struct ShipBuild {
     #[model(id)]
     pub id: SlabMapId<ShipBuild>,
-
-    #[model(ty=ShipBuildDataSerialized)]
+    #[model_attr(serde(flatten))]
     pub data: ShipBuildData,
 }
 
@@ -18,7 +17,6 @@ pub struct ShipBuild {
 #[derive(Debug, Clone)]
 pub struct ShipBuildData {
     pub ship: SlabMapId<Ship>,
-    #[model(ty=Vec<InstalledComponentSerialized>)]
     pub components: Vec<InstalledComponent>,
 }
 

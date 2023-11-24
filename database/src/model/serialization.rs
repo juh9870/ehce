@@ -5,13 +5,13 @@ use std::path::PathBuf;
 
 use bevy::asset::Handle;
 
-use duplicate::duplicate_item;
+use duplicate::{duplicate, duplicate_item};
 use miette::Diagnostic;
 use thiserror::Error;
 
 use utils::slab_map::{SlabMap, SlabMapDuplicateError, SlabMapId};
 
-use crate::model::{DatabaseItemKind, ItemId, ModelKind, PartialModRegistry};
+use crate::model::{DatabaseItemKind, DatabaseItemTrait, ItemId, ModelKind, PartialModRegistry};
 
 mod diagnostic;
 
@@ -102,6 +102,14 @@ pub(crate) trait ModelDeserializable<T> {
     fn deserialize(self, registry: &mut PartialModRegistry) -> Result<T, DeserializationError>;
 }
 
+pub trait ModelDeserializableFallbackType {
+    type Serialized;
+}
+
+trait PreferredHasherForKey {
+    type Hasher;
+}
+
 pub(crate) trait ApplyMin: Sized {
     type Num;
     fn apply(self, min: Self::Num) -> Result<Self, DeserializationError>;
@@ -111,25 +119,32 @@ pub(crate) trait ApplyMax: Sized {
     type Num;
     fn apply(self, max: Self::Num) -> Result<Self, DeserializationError>;
 }
-#[duplicate_item(
-    ty;
-    [ String ];
-    [ i8 ]; [ i16 ]; [ i32 ]; [ i64 ]; [ i128 ];
-    [ u8 ]; [ u16 ]; [ u32 ]; [ u64 ]; [ u128 ];
-    [ f32 ]; [ f64 ];
 
-    [ glam::f32::Vec2 ]; [ glam::f32::Vec3 ]; [ glam::f32::Vec4 ];
-    [ glam::f64::DVec2 ]; [ glam::f64::DVec3 ]; [ glam::f64::DVec4 ];
-    [ glam::i32::IVec2 ]; [ glam::i32::IVec3 ]; [ glam::i32::IVec4 ];
-    [ glam::u32::UVec2 ]; [ glam::u32::UVec3 ]; [ glam::u32::UVec4 ];
-    [ glam::i64::I64Vec2 ]; [ glam::i64::I64Vec3 ]; [ glam::i64::I64Vec4 ];
-    [ glam::u64::U64Vec2 ]; [ glam::u64::U64Vec3 ]; [ glam::u64::U64Vec4 ];
-    [ glam::bool::BVec2 ]; [ glam::bool::BVec3 ]; [ glam::bool::BVec4 ];
-)]
-impl ModelDeserializable<ty> for ty {
-    #[inline(always)]
-    fn deserialize(self, _registry: &mut PartialModRegistry) -> Result<ty, DeserializationError> {
-        Ok(self)
+duplicate! {
+    [
+        ty;
+        [ String ];
+        [ i8 ]; [ i16 ]; [ i32 ]; [ i64 ]; [ i128 ];
+        [ u8 ]; [ u16 ]; [ u32 ]; [ u64 ]; [ u128 ];
+        [ f32 ]; [ f64 ];
+
+        [ glam::f32::Vec2 ]; [ glam::f32::Vec3 ]; [ glam::f32::Vec4 ];
+        [ glam::f64::DVec2 ]; [ glam::f64::DVec3 ]; [ glam::f64::DVec4 ];
+        [ glam::i32::IVec2 ]; [ glam::i32::IVec3 ]; [ glam::i32::IVec4 ];
+        [ glam::u32::UVec2 ]; [ glam::u32::UVec3 ]; [ glam::u32::UVec4 ];
+        [ glam::i64::I64Vec2 ]; [ glam::i64::I64Vec3 ]; [ glam::i64::I64Vec4 ];
+        [ glam::u64::U64Vec2 ]; [ glam::u64::U64Vec3 ]; [ glam::u64::U64Vec4 ];
+        [ glam::bool::BVec2 ]; [ glam::bool::BVec3 ]; [ glam::bool::BVec4 ];
+    ]
+    impl ModelDeserializable<ty> for ty {
+        #[inline(always)]
+        fn deserialize(self, _registry: &mut PartialModRegistry) -> Result<ty, DeserializationError> {
+            Ok(self)
+        }
+    }
+
+    impl ModelDeserializableFallbackType for ty {
+        type Serialized = ty;
     }
 }
 
@@ -141,6 +156,10 @@ impl<T: ModelDeserializable<R>, R> ModelDeserializable<Option<R>> for Option<T> 
     ) -> Result<Option<R>, DeserializationError> {
         self.map(|e| e.deserialize(registry)).transpose()
     }
+}
+
+impl<T: ModelDeserializableFallbackType> ModelDeserializableFallbackType for Option<T> {
+    type Serialized = Option<T::Serialized>;
 }
 
 impl<T: ModelDeserializable<R>, R> ModelDeserializable<Vec<R>> for Vec<T> {
@@ -157,6 +176,10 @@ impl<T: ModelDeserializable<R>, R> ModelDeserializable<Vec<R>> for Vec<T> {
             })
             .collect()
     }
+}
+
+impl<T: ModelDeserializableFallbackType> ModelDeserializableFallbackType for Vec<T> {
+    type Serialized = Vec<T::Serialized>;
 }
 
 impl<
@@ -198,6 +221,14 @@ impl ModelDeserializable<Handle<bevy::prelude::Image>> for String {
             Err(DeserializationErrorKind::MissingImage(self).into())
         }
     }
+}
+
+impl ModelDeserializableFallbackType for Handle<bevy::prelude::Image> {
+    type Serialized = String;
+}
+
+impl<T: DatabaseItemTrait> ModelDeserializableFallbackType for SlabMapId<T> {
+    type Serialized = ItemId;
 }
 
 #[duplicate_item(
