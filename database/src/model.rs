@@ -8,16 +8,20 @@ use duplicate::duplicate_item;
 use itertools::Itertools;
 use paste::paste;
 use rustc_hash::FxHashMap;
+use schemars::schema::RootSchema;
 use strum_macros::{Display, EnumDiscriminants, EnumIs};
 
 use utils::slab_map::{SlabMap, SlabMapId, SlabMapKeyOrUntypedId, SlabMapUntypedId};
 
+pub mod combat_settings;
 pub mod component;
 pub mod component_stats;
-pub mod formula;
+pub mod fleet;
 pub mod resource;
 pub mod ship;
 pub mod ship_build;
+
+pub mod formula;
 
 mod serialization;
 
@@ -324,6 +328,12 @@ impl ModRegistry {
     }
 }
 
+impl DatabaseItemSerialized {
+    pub fn schema() -> RootSchema {
+        schemars::schema_for!(Self)
+    }
+}
+
 #[derive(Debug, Default)]
 struct ModAssets {
     pub images: FxHashMap<String, (PathBuf, Handle<Image>)>,
@@ -357,9 +367,10 @@ macro_rules! registry_partial {
 macro_rules! registry_raw {
     ($($name:ident: $ty:ty),*$(,)?) => {
         paste! {
-            #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, EnumIs)]
-            #[serde(tag = "type")]
+            #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema, EnumIs)]
+            // #[serde(tag = "type")]
             #[serde(rename_all = "PascalCase")]
+            #[serde(rename = "DatabaseItem")]
             pub enum DatabaseItemSerialized {
                 $(
                     [< $name:camel >](<$ty as DatabaseModelSerializationHelper>::Serialized),
@@ -434,6 +445,8 @@ macro_rules! call_with_all_models {
             component_stats: $crate::model::component_stats::ComponentStats,
             resource: $crate::model::resource::Resource,
             component: $crate::model::component::Component,
+            fleet: $crate::model::fleet::Fleet,
+            combat_settings: $crate::model::combat_settings::CombatSettings,
         );
     };
 }

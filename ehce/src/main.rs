@@ -5,6 +5,8 @@ fn main() {
     App::new()
         .add_plugins((DefaultPlugins.set(AssetPlugin {
             mode: AssetMode::Processed,
+            file_path: "mods".to_string(),
+            processed_file_path: "tmp".to_string(),
             ..Default::default()
         }),))
         .add_plugins(ehce_core::CorePlugin)

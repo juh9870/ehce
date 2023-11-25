@@ -5,6 +5,7 @@ use database::call_with_all_models;
 use miette::Diagnostic;
 use rustc_hash::FxHashSet;
 use std::any::TypeId;
+use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use utils::miette_ext::DiagnosticWrapper;
 
@@ -53,6 +54,7 @@ impl Plugin for ModLoadingPlugin {
 
 #[derive(Debug, Default, Resource)]
 struct LoadingStateData {
+    name: String,
     folder_handle: Handle<LoadedFolder>,
     not_ready_handles: Option<FxHashSet<UntypedAssetId>>,
 }
@@ -67,6 +69,7 @@ fn loading_initializer(
     let Some(evt) = evt.read().last() else { return };
     let mod_folder = asset_server.load_folder(&evt.0);
     commands.insert_resource(LoadingStateData {
+        name: evt.0.clone(),
         folder_handle: mod_folder,
         not_ready_handles: None,
     });
@@ -83,16 +86,20 @@ fn loader(
     mut err_evt: EventWriter<ModLoadErrorEvent>,
     mut switch_evt: EventWriter<ModLoadedEvent>,
     frame: Res<FrameCount>,
+    mut state: ResMut<NextState<ModState>>,
     mut wait_until: Local<Option<u32>>,
+    mut first_load_flag: Local<bool>,
 ) {
     match asset_server.load_state(&data.folder_handle) {
         LoadState::NotLoaded => {
             error!("Mod folder appears to be missing from asset server");
+            state.set(ModState::Pending);
             err_evt.send(ModLoadErrorEvent);
             return;
         }
         LoadState::Failed => {
             error!("Failed to load mod files");
+            state.set(ModState::Pending);
             err_evt.send(ModLoadErrorEvent);
             return;
         }
@@ -118,6 +125,7 @@ fn loader(
     });
 
     if !errors.is_empty() {
+        state.set(ModState::Pending);
         err_evt.send(ModLoadErrorEvent);
         return;
     }
@@ -126,7 +134,13 @@ fn loader(
         return;
     }
 
-    let wait_until = wait_until.get_or_insert(frame.0 + 1);
+    let delay = if !*first_load_flag {
+        *first_load_flag = true;
+        30 // Half-a-second slowdown to let assets update
+    } else {
+        0
+    };
+    let wait_until = wait_until.get_or_insert(frame.0 + 1 + delay);
 
     if frame.0 < *wait_until {
         return;
@@ -137,6 +151,7 @@ fn loader(
 
     let Some(path) = asset_server.get_path(&data.folder_handle) else {
         error!("Mod folder is missing asset path");
+        state.set(ModState::Pending);
         err_evt.send(ModLoadErrorEvent);
         return;
     };
@@ -171,6 +186,7 @@ fn loader(
     }
 
     match construct_mod(
+        data.name.clone(),
         path.path().to_path_buf(),
         data.folder_handle.clone(),
         db_files,
@@ -178,10 +194,12 @@ fn loader(
     ) {
         Ok(data) => {
             info!("Mod is constructed, sending events");
+            state.set(ModState::Pending);
             switch_evt.send(ModLoadedEvent(data));
         }
         Err(err) => {
             report_error(err.wrap("Failed to load a mod"));
+            state.set(ModState::Pending);
             err_evt.send(ModLoadErrorEvent);
         }
     }
@@ -232,11 +250,16 @@ fn hot_reload(
     _asset: Res<Assets<DatabaseAsset>>,
     asset_server: Res<AssetServer>,
     loaded_mod: ResMut<ModData>,
+    mut load_mod_evt: EventWriter<WantLoadModEvent>,
+    mut buffer_timer: Local<Option<Timer>>,
+    time: Res<Time>,
+    windows: Query<&Window>,
 ) {
     enum Action {
         Add,
         Update,
     }
+    let mut want_reload = false;
     for evt in evt.read() {
         let (asset_id, _action) = match evt {
             AssetEvent::Added { id } => (id, Action::Add),
@@ -250,8 +273,8 @@ fn hot_reload(
         if !path.path().starts_with(&loaded_mod.mod_path) {
             continue;
         }
-
-        todo!("Full DB reload");
+        info!("Item reload is detected, queueing the hot reload.");
+        want_reload = true;
         // let Ok(path) = Utf8PathBuf::from_path_buf(path.path().to_path_buf()) else {
         //     error!(
         //         ?path,
@@ -319,6 +342,19 @@ fn hot_reload(
         //     }
         // }
     }
+
+    if want_reload {
+        *buffer_timer = Some(Timer::from_seconds(1.0, TimerMode::Once))
+    } else if windows.iter().any(|e| e.focused) {
+        if let Some(timer) = buffer_timer.deref_mut() {
+            timer.tick(time.elapsed());
+            if timer.just_finished() {
+                info!("Initializing hot reload");
+                load_mod_evt.send(WantLoadModEvent(loaded_mod.name.clone()));
+            }
+            *buffer_timer = None;
+        }
+    }
 }
 
 macro_rules! typed_events {
@@ -380,6 +416,7 @@ pub enum InternalHotReloadEvent {
 }
 
 fn construct_mod<'a, 'path>(
+    mod_name: String,
     mod_path: PathBuf,
     folder_handle: Handle<LoadedFolder>,
     files: impl IntoIterator<Item = (impl AsRef<Path>, &'a DatabaseAsset)>,
@@ -417,6 +454,7 @@ fn construct_mod<'a, 'path>(
     //     asset_paths.insert(path, id);
     // }
     Ok(ModData {
+        name: mod_name,
         registry,
         mod_path,
         folder_handle,

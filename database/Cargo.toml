@@ -20,6 +20,7 @@ miette = { workspace = true }
 nohash-hasher = { workspace = true }
 paste = { workspace = true }
 rustc-hash = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
 strum_macros = { workspace = true }
 thiserror = { workspace = true }

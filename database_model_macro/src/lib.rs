@@ -23,6 +23,19 @@ fn model_mod() -> proc_macro2::TokenStream {
 #[derive(Debug, Attribute)]
 struct AttributeInput {
     name: Option<String>,
+    no_schema: bool,
+}
+
+impl AttributeInput {
+    fn schema_derive(&self) -> Option<proc_macro2::TokenStream> {
+        if self.no_schema {
+            None
+        } else {
+            Some(quote! {
+                #[derive(schemars::JsonSchema)]
+            })
+        }
+    }
 }
 
 fn fallthrough(attrs: &mut Vec<syn::Attribute>) -> Vec<proc_macro2::TokenStream> {

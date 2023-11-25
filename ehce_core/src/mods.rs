@@ -26,6 +26,7 @@ impl Plugin for ModPlugin {
 
 #[derive(Debug, Resource)]
 pub struct ModData {
+    pub name: String,
     pub registry: ModRegistry,
     pub mod_path: PathBuf,
     pub folder_handle: Handle<LoadedFolder>,
@@ -39,7 +40,10 @@ pub enum ModState {
     None,
     /// State signifying that a mod is loading
     Loading,
-    /// State signifying a ready to use mod data
+    /// State signifying that a mod loading is finished and awaiting handling
+    /// from the current state
+    Pending,
+    /// State signifying a loaded mod, and listening for hot reload events
     Ready,
 }
 

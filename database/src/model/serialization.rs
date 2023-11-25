@@ -329,7 +329,7 @@ impl<T: ApplyMax> ApplyMax for Option<T> {
     }
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(transparent)]
 pub struct SerializationBoxingWrapper<T>(T);
 

@@ -78,6 +78,7 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
 
         if attribute_data.as_ref {
             as_refs.push(quote! {
+                #[automatically_derived]
                 impl AsRef<#ty> for #model_name {
                     fn as_ref(&self) -> &#ty {
                         &self.#name
@@ -118,9 +119,13 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
     }
 
     let tokens = fields.iter().map(|e| &e.definition);
+    let schema_derive = attr.schema_derive();
+    let model_name_str = model_name.to_string();
     let serialized_struct = quote!(
         #(#model_fallthrough_attrs)*
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+        #[serde(rename = #model_name_str)]
+        #schema_derive
         #[serde(rename_all = "camelCase")]
         pub struct #serialized_name {
             #(#tokens),*
@@ -202,6 +207,7 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
 
             pub type #id_name = #model_mod::SlabMapId<#model_name>;
 
+            #[automatically_derived]
             impl #model_mod::DatabaseItemTrait for #model_name {
                 fn id(&self) -> utils::slab_map::SlabMapUntypedId {
                     self.id.as_untyped()
@@ -212,22 +218,26 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                 }
             }
 
+            #[automatically_derived]
             impl #model_mod::DatabaseModelSerializationHelper for #model_name {
                 type Serialized = #serialized_name;
             }
 
+            #[automatically_derived]
             impl #model_mod::ModelKind for #model_name {
                 fn kind() -> #model_mod::DatabaseItemKind {
                     #model_mod::DatabaseItemKind::#kind_name
                 }
             }
 
+            #[automatically_derived]
             impl #model_mod::ModelKind for #serialized_name {
                 fn kind() -> #model_mod::DatabaseItemKind {
                     #model_mod::DatabaseItemKind::#kind_name
                 }
             }
 
+            #[automatically_derived]
             impl #model_mod::DatabaseItemSerializedTrait for #serialized_name {
                 fn id(&self) -> &#model_mod::ItemId {
                     &self.id
@@ -238,6 +248,7 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                 }
             }
 
+            #[automatically_derived]
             impl #serialization_mod::ModelDeserializable<#id_name> for #serialized_name {
                 fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#id_name, #serialization_mod::DeserializationError> {
                     let #serialized_field_name = self;
@@ -255,6 +266,7 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                 }
             }
 
+            #[automatically_derived]
             impl #serialization_mod::ModelDeserializable<#id_name> for &str {
                 fn deserialize(
                     self,
@@ -273,6 +285,7 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
         }
     } else {
         quote! {
+            #[automatically_derived]
             impl #serialization_mod::ModelDeserializable<#model_name> for #serialized_name {
                 fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#model_name, #serialization_mod::DeserializationError> {
                     let #serialized_field_name = self;

@@ -1,3 +1,5 @@
 /target
 .idea
 /ehce/imported_assets
+/ehce/tmp
+*.json.meta

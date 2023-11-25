@@ -65,18 +65,24 @@ pub fn process_enum(
 
     let (variants, deserialization): (Vec<_>, Vec<_>) = variants.into_iter().unzip();
 
+    let model_name_str = model_name.to_string();
+    let schema_derive = attr.schema_derive();
     Ok(quote! {
         #data
 
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+        #[serde(rename = #model_name_str)]
+        #schema_derive
         pub enum #serialized_name {
             #(#variants)*
         }
 
+        #[automatically_derived]
         impl #serialization_mod::ModelDeserializableFallbackType for #model_name {
             type Serialized = #serialized_name;
         }
 
+        #[automatically_derived]
         impl #serialization_mod::ModelDeserializable<#model_name> for #serialized_name {
             fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#model_name, #serialization_mod::DeserializationError> {
                 Ok(match self {

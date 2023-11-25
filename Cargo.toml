@@ -36,6 +36,7 @@ serde_derive = "1"
 serde_json5 = "0.1"
 slab = "0.4"
 soa_derive = "0.13"
+schemars = "0.8"
 strum = "0.25"
 strum_macros = "0.25"
 syn = "2.0"
@@ -50,6 +51,7 @@ strip = true
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
+lto = "off"
 #opt-level = 1
 
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:

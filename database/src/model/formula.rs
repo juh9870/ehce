@@ -8,7 +8,7 @@ use exmex::{Calculate, Express};
 use itertools::Itertools;
 use utils::slab_map::SlabMapId;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[serde(untagged)]
 pub enum SerializedFormula {
     String(String),
