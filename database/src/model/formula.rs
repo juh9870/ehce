@@ -4,7 +4,7 @@ use crate::model::serialization::{
     ModelDeserializableFallbackType,
 };
 use crate::model::PartialModRegistry;
-use exmex::Express;
+use exmex::{Calculate, Express};
 use itertools::Itertools;
 use utils::slab_map::SlabMapId;
 
@@ -34,10 +34,10 @@ impl ModelDeserializable<Formula> for SerializedFormula {
             SerializedFormula::String(formula) => {
                 Formula::deserialize_from(formula.as_str(), registry)
             }
-            SerializedFormula::Number(num) => {
-                let formula = num.to_string();
-                Formula::deserialize_from(formula.as_str(), registry)
-            }
+            SerializedFormula::Number(num) => Ok(Formula {
+                expr: exmex::FlatEx::from_num(num),
+                args: vec![],
+            }),
         }
     }
 }
