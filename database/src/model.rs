@@ -14,6 +14,7 @@ use utils::slab_map::{SlabMap, SlabMapId, SlabMapKeyOrUntypedId, SlabMapUntypedI
 
 pub mod component;
 pub mod component_stats;
+pub mod formula;
 pub mod resource;
 pub mod ship;
 pub mod ship_build;

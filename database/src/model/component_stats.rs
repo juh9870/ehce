@@ -1,9 +1,9 @@
 use crate::model::resource::Resource;
 use crate::model::ItemId;
 use database_model_macro::database_model;
+use nohash_hasher::IntMap;
 use rustc_hash::FxHashMap;
 use utils::slab_map::SlabMapId;
-use utils::IntMap;
 
 #[database_model]
 #[derive(Debug, Clone)]

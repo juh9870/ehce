@@ -10,5 +10,3 @@ pub type FxBiHashMap<
     LS = BuildHasherDefault<rustc_hash::FxHasher>,
     RS = BuildHasherDefault<rustc_hash::FxHasher>,
 > = BiHashMap<L, R, LS, RS>;
-
-pub use nohash_hasher::IntMap;

@@ -3,12 +3,14 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::{BuildHasher, Hash};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use bevy::asset::Handle;
 
 use duplicate::{duplicate, duplicate_item};
 use exmex::ExError;
 use miette::Diagnostic;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use utils::slab_map::{SlabMap, SlabMapDuplicateError, SlabMapId};
@@ -176,6 +178,20 @@ impl<T: ModelDeserializableFallbackType> ModelDeserializableFallbackType for Opt
     type Serialized = Option<T::Serialized>;
 }
 
+impl<T: ModelDeserializable<R>, R> ModelDeserializable<Arc<R>> for SerializationBoxingWrapper<T> {
+    #[inline(always)]
+    fn deserialize(
+        self,
+        registry: &mut PartialModRegistry,
+    ) -> Result<Arc<R>, DeserializationError> {
+        self.0.deserialize(registry).map(Arc::new)
+    }
+}
+
+impl<T: ModelDeserializableFallbackType> ModelDeserializableFallbackType for Arc<T> {
+    type Serialized = SerializationBoxingWrapper<T::Serialized>;
+}
+
 impl<T: ModelDeserializable<R>, R> ModelDeserializable<Vec<R>> for Vec<T> {
     #[inline]
     fn deserialize(
@@ -312,6 +328,10 @@ impl<T: ApplyMax> ApplyMax for Option<T> {
         self.map(|e| e.apply(max)).transpose()
     }
 }
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SerializationBoxingWrapper<T>(T);
 
 pub(crate) fn reserve<T>(
     map: &mut SlabMap<ItemId, Option<T>>,

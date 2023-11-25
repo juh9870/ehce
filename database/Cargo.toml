@@ -17,6 +17,7 @@ exmex = { workspace = true }
 glam = { workspace = true, features = ["serde"] }
 itertools = { workspace = true }
 miette = { workspace = true }
+nohash-hasher = { workspace = true }
 paste = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true }

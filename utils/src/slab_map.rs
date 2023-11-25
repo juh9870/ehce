@@ -268,6 +268,14 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher> SlabMap<K, V, Hasher> {
         self.keys.get_by_left(key).map(|e| SlabMapId::new(*e))
     }
 
+    pub fn id_to_key(&self, id: SlabMapId<V>) -> Option<&K> {
+        self.keys.get_by_right(&id.0)
+    }
+
+    pub fn untyped_to_key(&self, id: SlabMapUntypedId) -> Option<&K> {
+        self.keys.get_by_right(&id.0)
+    }
+
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.items.iter().map(|e| e.1)
     }

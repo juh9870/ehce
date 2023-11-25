@@ -4,7 +4,7 @@ use attribute_derive::Attribute;
 use proc_macro2::Span;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, Error, GenericArgument, Item, Meta, PathArguments, Type};
+use syn::{parse_macro_input, Error, Item, Meta, Type};
 
 use crate::enums::process_enum;
 use crate::structs::process_struct;

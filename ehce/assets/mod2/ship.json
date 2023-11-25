@@ -2,6 +2,6 @@
   "id": "eh:scout",
   "version": "0",
   "type": "Ship",
-  "sprite": "icon.png",
+  "sprite": "tarus.png",
   "modelScale": 1
 }

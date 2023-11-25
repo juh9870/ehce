@@ -2,6 +2,6 @@
   "id": "eh:scout2",
   "version": "0",
   "type": "Ship",
-  "sprite": "icon.png",
+  "sprite": "wing.png",
   "modelScale": 1
 }

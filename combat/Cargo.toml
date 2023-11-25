@@ -7,6 +7,12 @@ edition = "2021"
 [dependencies]
 bevy = { workspace = true, default-features = false, features = ["bevy_sprite", "bevy_gilrs"] }
 bevy_vector_shapes = "0.6"
+bevy_xpbd_2d = { workspace = true }
 bytemuck = { workspace = true }
 ehce_core = { path = "../ehce_core" }
 euclid = { workspace = true }
+exmex = { workspace = true }
+itertools = { workspace = true }
+nohash-hasher = { workspace = true }
+soa_derive ={ workspace = true }
+utils = { path = "../utils" }
