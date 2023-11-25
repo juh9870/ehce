@@ -15,4 +15,3 @@ exmex = { workspace = true }
 itertools = { workspace = true }
 nohash-hasher = { workspace = true }
 soa_derive ={ workspace = true }
-utils = { path = "../utils" }

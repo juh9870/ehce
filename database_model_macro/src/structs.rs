@@ -179,7 +179,11 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
     });
 
     let deserialization_impl = if let Some(id_field) = id_field {
+        let id_name = format_ident!("{}Id", model_name);
         quote! {
+
+            pub type #id_name = #model_mod::SlabMapId<#model_name>;
+
             impl #model_mod::DatabaseItemTrait for #model_name {
                 fn id(&self) -> utils::slab_map::SlabMapUntypedId {
                     self.id.as_untyped()
@@ -216,8 +220,8 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                 }
             }
 
-            impl #serialization_mod::ModelDeserializable<#model_mod::SlabMapId<#model_name>> for #serialized_name {
-                fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#model_mod::SlabMapId<#model_name>, #serialization_mod::DeserializationError> {
+            impl #serialization_mod::ModelDeserializable<#id_name> for #serialized_name {
+                fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#id_name, #serialization_mod::DeserializationError> {
                     let #serialized_field_name = self;
                     let #reservation_field_name = #serialization_mod::reserve(&mut registry.#map_name, #serialized_field_name.#id_field.clone())?;
 
@@ -233,11 +237,11 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                 }
             }
 
-            impl #serialization_mod::ModelDeserializable<#model_mod::SlabMapId<#model_name>> for &str {
+            impl #serialization_mod::ModelDeserializable<#id_name> for &str {
                 fn deserialize(
                     self,
                     registry: &mut #model_mod::PartialModRegistry,
-                ) -> Result<#model_mod::SlabMapId<#model_name>, #serialization_mod::DeserializationError> {
+                ) -> Result<#id_name, #serialization_mod::DeserializationError> {
                     if let Some(id) = #serialization_mod::get_reserved_key(&mut registry.#map_name, self) {
                         return Ok(id)
                     }

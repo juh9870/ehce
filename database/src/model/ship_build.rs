@@ -1,14 +1,12 @@
+use crate::model::component::ComponentId;
+use crate::model::ship::ShipId;
 use database_model_macro::database_model;
-use utils::slab_map::SlabMapId;
-
-use super::component::Component;
-use super::ship::Ship;
 
 #[database_model]
 #[derive(Debug, Clone)]
 pub struct ShipBuild {
     #[model(id)]
-    pub id: SlabMapId<ShipBuild>,
+    pub id: ShipBuildId,
     #[model_attr(serde(flatten))]
     pub data: ShipBuildData,
 }
@@ -16,14 +14,14 @@ pub struct ShipBuild {
 #[database_model]
 #[derive(Debug, Clone)]
 pub struct ShipBuildData {
-    pub ship: SlabMapId<Ship>,
+    pub ship: ShipId,
     pub components: Vec<InstalledComponent>,
 }
 
 #[database_model]
 #[derive(Debug, Clone)]
 pub struct InstalledComponent {
-    pub component: SlabMapId<Component>,
+    pub component: ComponentId,
     pub pos: glam::u32::UVec2,
 }
 

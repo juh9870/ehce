@@ -5,11 +5,8 @@ use nohash_hasher::IntMap;
 use soa_derive::StructOfArray;
 use std::sync::Arc;
 
-use ehce_core::database::model::resource::Resource;
+use ehce_core::database::model::resource::ResourceId;
 use ehce_core::mods::ModData;
-use utils::slab_map::SlabMapId;
-
-type ResourceId = SlabMapId<Resource>;
 
 /// Component to track entity resources
 ///
