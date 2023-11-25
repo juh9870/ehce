@@ -22,6 +22,7 @@ color-backtrace = "0.6"
 convert_case = "0.6"
 duplicate = "1"
 euclid = { version = "0.22", features = ["bytemuck"] }
+exmex = "0.18"
 glam = { version = "0.24", features = ["bytemuck"] }
 itertools = "0.12"
 miette = { version = "5", features = ["fancy"] }
@@ -34,13 +35,12 @@ serde = "1"
 serde_derive = "1"
 serde_json5 = "0.1"
 slab = "0.4"
+soa_derive = "0.13"
 strum = "0.25"
 strum_macros = "0.25"
 syn = "2.0"
 thiserror = "1"
 tracing = "0.1"
-exmex = "0.18"
-soa_derive = "0.13"
 
 [profile.release]
 opt-level = 3
