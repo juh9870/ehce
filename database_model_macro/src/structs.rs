@@ -26,9 +26,15 @@ struct FieldData {
 #[derive(Debug, Attribute)]
 #[attribute(ident = model)]
 struct FieldAttributeInput {
+    /// Applies min validator to the field
     min: Option<Literal>,
+    /// Applies max validator to the field
     max: Option<Literal>,
+    /// Marks field as ID, turning whole marked struct into a database model
     id: bool,
+    /// Generated AsRef implementation for marked struct to value of this field
+    as_ref: bool,
+    /// Custom serialized field type
     ty: Option<Type>,
 }
 
@@ -53,6 +59,15 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
 
     let attr = AttributeInput::from_args(attr.into())?;
 
+    let model_name = &data.ident;
+    let serialized_name = attr
+        .name
+        .as_ref()
+        .map(|e| format_ident!("{e}"))
+        .unwrap_or_else(|| format_ident!("{}Serialized", data.ident));
+
+    let mut as_refs = vec![];
+
     for field in &mut data.fields {
         let Some(name) = &field.ident else {
             return Err(Error::new(field.span(), "All model fields must be named"));
@@ -60,6 +75,16 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
         let ty = &field.ty;
 
         let attribute_data = FieldAttributeInput::remove_attributes(&mut field.attrs)?;
+
+        if attribute_data.as_ref {
+            as_refs.push(quote! {
+                impl AsRef<#ty> for #model_name {
+                    fn as_ref(&self) -> &#ty {
+                        &self.#name
+                    }
+                }
+            })
+        }
 
         let serialized_type = if let Some(ty) = &attribute_data.ty {
             quote!(#ty)
@@ -91,13 +116,6 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
 
         fields.push(field_data)
     }
-
-    let model_name = &data.ident;
-    let serialized_name = attr
-        .name
-        .as_ref()
-        .map(|e| format_ident!("{e}"))
-        .unwrap_or_else(|| format_ident!("{}Serialized", data.ident));
 
     let tokens = fields.iter().map(|e| &e.definition);
     let serialized_struct = quote!(

@@ -37,12 +37,17 @@ fn fallthrough(attrs: &mut Vec<syn::Attribute>) -> Vec<proc_macro2::TokenStream>
         let Some(name) = list.path.segments.last() else {
             continue;
         };
-        if &name.ident.to_string() != "model_attr" {
-            continue;
+        let tokens = &list.tokens;
+        match name.ident.to_string().as_str() {
+            "model_attr" => {
+                inner_attrs.push(quote_spanned!(attr.span()=>#[#tokens]));
+            }
+            "model_serde" => {
+                inner_attrs.push(quote_spanned!(attr.span()=>#[serde(#tokens)]));
+            }
+            _ => continue,
         }
 
-        let tokens = &list.tokens;
-        inner_attrs.push(quote_spanned!(attr.span()=>#[#tokens]));
         i -= 1;
         attrs.remove(i);
     }

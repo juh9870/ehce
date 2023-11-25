@@ -7,7 +7,8 @@ use database_model_macro::database_model;
 pub struct ShipBuild {
     #[model(id)]
     pub id: ShipBuildId,
-    #[model_attr(serde(flatten))]
+    #[model_serde(flatten)]
+    #[model(as_ref)]
     pub data: ShipBuildData,
 }
 
@@ -23,10 +24,4 @@ pub struct ShipBuildData {
 pub struct InstalledComponent {
     pub component: ComponentId,
     pub pos: glam::u32::UVec2,
-}
-
-impl AsRef<ShipBuildData> for ShipBuild {
-    fn as_ref(&self) -> &ShipBuildData {
-        &self.data
-    }
 }
