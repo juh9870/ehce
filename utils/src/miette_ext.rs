@@ -2,6 +2,38 @@ use miette::Diagnostic;
 use std::fmt::Display;
 use thiserror::Error;
 
+pub use paste::paste;
+
+#[macro_export]
+macro_rules! bubbled {
+    ($name:ident($message:literal) { $($variant:ty),* $(,)? }) => {
+
+        $crate::miette_ext::paste! {
+            #[derive(Debug, thiserror::Error, miette::Diagnostic)]
+            pub enum $name {
+                $(
+                    [<$variant>](#[diagnostic_source] $variant),
+                ),*
+            }
+
+            $(
+                impl From<$variant> for $name {
+                    fn from(value: $variant) -> Self {
+                        Self::[<$variant>](value)
+                    }
+                }
+            )*
+
+            #[automatically_derived]
+            impl std::fmt::Display for $name {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    write!(f, "{}", $message)
+                }
+            }
+        }
+    };
+}
+
 pub trait DiagnosticWrapper: sealed::Sealed {
     type Wrapped;
     fn wrap(self, message: impl Display) -> Self::Wrapped;

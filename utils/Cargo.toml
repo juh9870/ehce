@@ -8,6 +8,7 @@ edition = "2021"
 bimap = { workspace = true }
 miette = { workspace = true }
 nohash-hasher = { workspace = true }
+paste = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true }
 slab = { workspace = true }

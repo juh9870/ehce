@@ -1,4 +1,5 @@
-use crate::resources::Resources;
+use crate::resources::{ResourceEvaluationError, Resources};
+
 use bevy::math::Vec3;
 use bevy::prelude::{Bundle, Sprite, SpriteBundle, Transform, Vec2};
 use bevy_xpbd_2d::prelude::{Collider, RigidBody};
@@ -6,13 +7,24 @@ use ehce_core::database::model::ship::Ship;
 use ehce_core::database::model::ship_build::ShipBuildData;
 use ehce_core::mods::ModData;
 
-pub fn make_build(data: impl AsRef<ShipBuildData>, db: ModData) {
-    let data = data.as_ref();
+pub fn calculate_resources(
+    db: &ModData,
+    ship: &Ship,
+    build: impl AsRef<ShipBuildData>,
+) -> Result<Resources, ResourceEvaluationError> {
+    let build = build.as_ref();
 
-    let _ship = &db.registry.ship[data.ship];
+    let stats = build
+        .components
+        .iter()
+        .map(|e| &db.registry[e.component].stats)
+        .chain(ship.built_in_stats.iter())
+        .flat_map(|id| &db.registry[id].stats)
+        .map(|(id, value)| (*id, *value));
+    Resources::from_stats(db, stats)
 }
 
-pub fn make_ship(data: &Ship, _db: ModData) -> ShipBundle {
+pub fn make_ship(_db: &ModData, data: &Ship) -> ShipBundle {
     ShipBundle {
         sprite: SpriteBundle {
             sprite: Sprite {
@@ -28,14 +40,12 @@ pub fn make_ship(data: &Ship, _db: ModData) -> ShipBundle {
         },
         rb: RigidBody::Dynamic,
         collider: Collider::ball(1.0),
-        resources: Default::default(),
     }
 }
 
 #[derive(Bundle)]
 pub struct ShipBundle {
-    sprite: SpriteBundle,
-    rb: RigidBody,
-    collider: Collider,
-    resources: Resources,
+    pub sprite: SpriteBundle,
+    pub rb: RigidBody,
+    pub collider: Collider,
 }

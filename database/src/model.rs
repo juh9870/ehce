@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
+use std::ops::Index;
 use std::path::{Path, PathBuf};
 
 use bevy::{asset::Handle, render::texture::Image};
@@ -435,6 +436,28 @@ macro_rules! registry_raw {
         }
     };
 }
+macro_rules! id_index {
+    ($($name:ident: $ty:ty),*$(,)?) => {
+        paste! {
+            $(
+                impl Index<SlabMapId<$ty>> for ModRegistry {
+                    type Output = $ty;
+
+                    fn index(&self, index: SlabMapId<$ty>) -> &Self::Output {
+                        &self.$name[index]
+                    }
+                }
+                impl Index<&SlabMapId<$ty>> for ModRegistry {
+                    type Output = $ty;
+
+                    fn index(&self, index: &SlabMapId<$ty>) -> &Self::Output {
+                        &self.$name[*index]
+                    }
+                }
+            )*
+        }
+    };
+}
 
 #[macro_export]
 macro_rules! call_with_all_models {
@@ -457,3 +480,4 @@ pub(crate) use call_with_all_models;
 call_with_all_models!(registry_raw);
 call_with_all_models!(registry_partial);
 call_with_all_models!(registry);
+call_with_all_models!(id_index);

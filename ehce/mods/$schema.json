@@ -1,1 +1,283 @@
-{"$schema":"http://json-schema.org/draft-07/schema#","title":"DatabaseItem","oneOf":[{"type":"object","required":["Ship"],"properties":{"Ship":{"$ref":"#/definitions/Ship"}},"additionalProperties":false},{"type":"object","required":["ShipBuild"],"properties":{"ShipBuild":{"$ref":"#/definitions/ShipBuild"}},"additionalProperties":false},{"type":"object","required":["ComponentStats"],"properties":{"ComponentStats":{"$ref":"#/definitions/ComponentStats"}},"additionalProperties":false},{"type":"object","required":["Resource"],"properties":{"Resource":{"$ref":"#/definitions/Resource"}},"additionalProperties":false},{"type":"object","required":["Component"],"properties":{"Component":{"$ref":"#/definitions/Component"}},"additionalProperties":false},{"type":"object","required":["Fleet"],"properties":{"Fleet":{"$ref":"#/definitions/Fleet"}},"additionalProperties":false},{"type":"object","required":["CombatSettings"],"properties":{"CombatSettings":{"$ref":"#/definitions/CombatSettings"}},"additionalProperties":false}],"definitions":{"CombatSettings":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}},"Component":{"type":"object","required":["id","stats"],"properties":{"id":{"type":"string"},"stats":{"type":"string"}}},"ComponentStats":{"type":"object","required":["id","stats"],"properties":{"id":{"type":"string"},"stats":{"type":"object","additionalProperties":{"type":"number","format":"double"}}}},"Fleet":{"type":"object","required":["builds","id"],"properties":{"builds":{"type":"array","items":{"type":"string"}},"id":{"type":"string"}}},"InstalledComponent":{"type":"object","required":["component","pos"],"properties":{"component":{"type":"string"},"pos":{"$ref":"#/definitions/UVec2"}}},"Resource":{"type":"object","required":["id","name"],"properties":{"computed":{"anyOf":[{"$ref":"#/definitions/SerializedFormula"},{"type":"null"}]},"default":{"anyOf":[{"$ref":"#/definitions/SerializedFormula"},{"type":"null"}]},"id":{"type":"string"},"name":{"type":"string"}}},"SerializedFormula":{"anyOf":[{"type":"string"},{"type":"number","format":"double"}]},"Ship":{"type":"object","required":["id","modelScale","sprite"],"properties":{"builtInStats":{"type":["string","null"]},"id":{"type":"string"},"modelScale":{"type":"number","format":"float"},"sprite":{"type":"string"}}},"ShipBuild":{"type":"object","required":["components","id","ship"],"properties":{"components":{"type":"array","items":{"$ref":"#/definitions/InstalledComponent"}},"id":{"type":"string"},"ship":{"type":"string"}}},"UVec2":{"type":"object","required":["x","y"],"properties":{"x":{"type":"integer","format":"uint32","minimum":0},"y":{"type":"integer","format":"uint32","minimum":0}}}}}
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseItem",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "Ship"
+      ],
+      "properties": {
+        "Ship": {
+          "$ref": "#/definitions/Ship"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ShipBuild"
+      ],
+      "properties": {
+        "ShipBuild": {
+          "$ref": "#/definitions/ShipBuild"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ComponentStats"
+      ],
+      "properties": {
+        "ComponentStats": {
+          "$ref": "#/definitions/ComponentStats"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "Resource"
+      ],
+      "properties": {
+        "Resource": {
+          "$ref": "#/definitions/Resource"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "Component"
+      ],
+      "properties": {
+        "Component": {
+          "$ref": "#/definitions/Component"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "Fleet"
+      ],
+      "properties": {
+        "Fleet": {
+          "$ref": "#/definitions/Fleet"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "CombatSettings"
+      ],
+      "properties": {
+        "CombatSettings": {
+          "$ref": "#/definitions/CombatSettings"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "CombatSettings": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "Component": {
+      "type": "object",
+      "required": [
+        "id",
+        "stats"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "stats": {
+          "type": "string"
+        }
+      }
+    },
+    "ComponentStats": {
+      "type": "object",
+      "required": [
+        "id",
+        "stats"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "stats": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      }
+    },
+    "Fleet": {
+      "type": "object",
+      "required": [
+        "builds",
+        "id"
+      ],
+      "properties": {
+        "builds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "InstalledComponent": {
+      "type": "object",
+      "required": [
+        "component",
+        "pos"
+      ],
+      "properties": {
+        "component": {
+          "type": "string"
+        },
+        "pos": {
+          "$ref": "#/definitions/UVec2"
+        }
+      }
+    },
+    "Resource": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "computed": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SerializedFormula"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "default": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SerializedFormula"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "SerializedFormula": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number",
+          "format": "double"
+        }
+      ]
+    },
+    "Ship": {
+      "type": "object",
+      "required": [
+        "id",
+        "modelScale",
+        "sprite"
+      ],
+      "properties": {
+        "builtInStats": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "modelScale": {
+          "type": "number",
+          "format": "float"
+        },
+        "sprite": {
+          "type": "string"
+        }
+      }
+    },
+    "ShipBuild": {
+      "type": "object",
+      "required": [
+        "components",
+        "id",
+        "ship"
+      ],
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/InstalledComponent"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "ship": {
+          "type": "string"
+        }
+      }
+    },
+    "UVec2": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

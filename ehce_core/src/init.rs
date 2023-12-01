@@ -1,6 +1,7 @@
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 
+use crate::glue::combat::CombatInit;
 use crate::mods::loading::load_last_mod;
 use crate::mods::{ModLoadErrorEvent, ModLoadedEvent, ModState};
 use crate::GameState;
@@ -31,7 +32,29 @@ fn init_tick(
 
     if let Some(data) = loaded.drain().last() {
         info!("Mod is loaded, switching to combat state");
-        commands.insert_resource(data.0);
+        let mod_data = data.0;
+
+        let fleet = mod_data
+            .registry
+            .fleet
+            .values()
+            .next()
+            .expect("Should have at least one fleet")
+            .data
+            .clone();
+        commands.insert_resource(CombatInit {
+            player_fleet: fleet.clone(),
+            enemy_fleet: fleet,
+            combat_settings: mod_data
+                .registry
+                .combat_settings
+                .values()
+                .next()
+                .expect("Should have at least one Combat settings")
+                .data
+                .clone(),
+        });
+        commands.insert_resource(mod_data);
         mod_state.set(ModState::Ready);
         state.set(GameState::Combat);
     }

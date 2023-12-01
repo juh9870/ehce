@@ -11,6 +11,7 @@ use std::marker::PhantomData;
 // Re-export database
 pub use database;
 
+pub mod glue;
 mod init;
 mod json5_asset_plugin;
 pub mod mods;

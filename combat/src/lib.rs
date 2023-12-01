@@ -1,81 +1,113 @@
+use crate::spawning::ship_spawn;
+use crate::unit::Team;
 use bevy::prelude::*;
+use bevy::render::camera::ScalingMode;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_vector_shapes::prelude::*;
-use bytemuck::cast;
-use euclid::{Length, Vector2D};
+use ehce_core::database::model::combat_settings::CombatSettingsData;
 
-pub mod resources;
-pub mod state;
-pub mod unit;
+use ehce_core::glue::combat::CombatInit;
+use ehce_core::mods::HotReloading;
+use ehce_core::GameState;
+use extension_trait::extension_trait;
+use fleet::CombatFleet;
+use miette::Report;
+
+mod fleet;
+mod resources;
+mod spawning;
+mod state;
+mod unit;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub enum CombatSet {
+    PreUpdate,
+    Update,
+    PostUpdate,
+}
 
 pub struct CombatPlugin;
 
 impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(ehce_core::GameState::Combat), init_combat)
-            .add_systems(OnExit(ehce_core::GameState::Combat), exit_combat)
-            .add_systems(Update, update)
+        app.configure_sets(
+            FixedUpdate,
+            (
+                CombatSet::PreUpdate,
+                CombatSet::Update,
+                CombatSet::PostUpdate,
+            )
+                .chain()
+                .after(HotReloading)
+                .run_if(in_state(GameState::Combat)),
+        );
+        app.add_systems(OnEnter(GameState::Combat), init_combat)
+            .add_systems(OnExit(GameState::Combat), exit_combat)
             .add_plugins(Shape2dPlugin::default());
+
+        app.add_systems(FixedUpdate, ship_spawn.in_set(CombatSet::PreUpdate));
+        app.add_systems(Update, (update).run_if(in_state(GameState::Combat)));
+
+        app.add_plugins(WorldInspectorPlugin::new());
     }
 }
 
-#[derive(Debug, Reflect, Resource)]
+#[derive(Debug, Resource)]
 struct CombatData {
-    camera: Entity,
+    combat_settings: CombatSettingsData,
+    player_team: Team,
 }
 
-fn init_combat(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let camera = commands.spawn(Camera2dBundle::default()).id();
-    let data = CombatData { camera };
-
-    let texture = asset_server.load("icon.png");
-
-    let mut left = -480.0;
-    for i in 1..=15 {
-        let transform = Transform {
-            translation: Vec3::new(left, 0.0, 0.0),
-            scale: Vec3::splat(i as f32 * 10.0),
+fn init_combat(world: &mut World) {
+    let combat_init = world
+        .remove_resource::<CombatInit>()
+        .unwrap_or_else(|| todo!("Gracefully handle state switch error"));
+    let player_team =
+        Team::new_unchecked_do_not_use_directly_its_bad_really_will_be_very_hard_to_migrate_later(
+            0,
+        );
+    let enemy_team =
+        Team::new_unchecked_do_not_use_directly_its_bad_really_will_be_very_hard_to_migrate_later(
+            1,
+        );
+    world.insert_resource(CombatData {
+        combat_settings: combat_init.combat_settings,
+        player_team,
+    });
+    world.spawn((player_team, CombatFleet::from(&combat_init.player_fleet)));
+    world.spawn((enemy_team, CombatFleet::from(&combat_init.enemy_fleet)));
+    world.spawn(Camera2dBundle {
+        projection: OrthographicProjection {
+            near: -1e9,
+            far: 1e9,
+            scaling_mode: ScalingMode::WindowSize(64.0),
             ..Default::default()
-        };
-        commands.spawn(SpriteBundle {
-            texture: texture.clone(),
-            sprite: Sprite {
-                custom_size: Some(Vec2::splat(1.0)),
-                ..Default::default()
-            },
-            transform,
-            ..Default::default()
-        });
-        left += i as f32 * 10.0 + 5.0
-    }
-    commands.insert_resource(data);
-}
-
-fn exit_combat(mut commands: Commands, data: Res<CombatData>) {
-    commands.entity(data.camera).despawn_recursive()
-}
-
-#[inline(always)]
-fn as_glam(vec: ScreenVector) -> Vec2 {
-    cast(vec)
-}
-
-fn update(query: Query<&mut Transform, With<Sprite>>, _painter: ShapePainter) {
-    query.for_each(|_e| {
-        // painter.transform = *e;
-        // painter.hollow = true;
-        // painter.color = Color::RED;
-        // painter.thickness = 0.001;
-        // painter.rect(Vec2::ONE);
+        },
+        ..Default::default()
     });
 }
 
-#[derive(Debug)]
-struct WorldSpace;
+fn exit_combat(_commands: Commands, _data: Res<CombatData>) {}
 
-type WorldLength = Length<f32, WorldSpace>;
-type WorldVector = Vector2D<f32, WorldSpace>;
+fn update(query: Query<&mut Transform, With<Sprite>>, mut painter: ShapePainter) {
+    query.for_each(|e| {
+        painter.transform = *e;
+        painter.hollow = true;
+        painter.color = Color::RED;
+        painter.thickness = 0.001;
+        painter.rect(Vec2::ONE);
+    });
+}
 
-#[derive(Debug)]
-pub struct ScreenSpace;
-type ScreenLength = Length<f32, ScreenSpace>;
-type ScreenVector = Vector2D<f32, ScreenSpace>;
+#[extension_trait]
+pub impl<T, E: Into<Report>> ResultExt<T> for Result<T, E> {
+    fn sys_fail(self) -> T {
+        match self {
+            Ok(data) => data,
+            Err(err) => {
+                error!("Something gone wrong.\n{:?}", err.into());
+                std::process::exit(1);
+            }
+        }
+    }
+}

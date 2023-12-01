@@ -1,0 +1,12 @@
+{
+  "Fleet": {
+    "id": "eh:debug_fleet",
+    "builds": [
+      "eh:tarus",
+      "eh:tarus",
+      "eh:tarus",
+      "eh:tarus",
+      "eh:tarus"
+    ]
+  }
+}

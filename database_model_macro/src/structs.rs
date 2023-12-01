@@ -84,6 +84,12 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                         &self.#name
                     }
                 }
+                #[automatically_derived]
+                impl AsRef<#ty> for #ty {
+                    fn as_ref(&self) -> &#ty {
+                        &self
+                    }
+                }
             })
         }
 
@@ -131,9 +137,12 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
             #(#tokens),*
         }
 
+        #[automatically_derived]
         impl #serialization_mod::ModelDeserializableFallbackType for #model_name {
             type Serialized = #serialized_name;
         }
+
+        #(#as_refs)*
     );
 
     let map_name = attr.name.unwrap_or_else(|| {
