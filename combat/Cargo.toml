@@ -9,6 +9,7 @@ bevy = { workspace = true, default-features = false, features = ["bevy_sprite", 
 bevy-inspector-egui = { workspace = true }
 bevy_vector_shapes = "0.6"
 bevy_xpbd_2d = { workspace = true }
+collider_generator = { path = "../collider_generator" }
 ehce_core = { path = "../ehce_core" }
 exmex = { workspace = true }
 extension-trait = { workspace = true }

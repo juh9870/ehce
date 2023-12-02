@@ -1,7 +1,7 @@
 use crate::resources::{ResourceEvaluationError, Resources};
 
 use bevy::math::Vec3;
-use bevy::prelude::{Bundle, Sprite, SpriteBundle, Transform, Vec2};
+use bevy::prelude::{Assets, Bundle, Image, Sprite, SpriteBundle, Transform, Vec2};
 use bevy_xpbd_2d::prelude::{Collider, RigidBody};
 use ehce_core::database::model::ship::Ship;
 use ehce_core::database::model::ship_build::ShipBuildData;
@@ -24,7 +24,12 @@ pub fn calculate_resources(
     Resources::from_stats(db, stats)
 }
 
-pub fn make_ship(_db: &ModData, data: &Ship) -> ShipBundle {
+pub fn make_ship(_db: &ModData, data: &Ship, image_assets: &Assets<Image>) -> ShipBundle {
+    let collider = if let Some(image) = image_assets.get(&data.sprite) {
+        collider_generator::compute_collider_for_texture(image, 0.01)
+    } else {
+        Collider::ball(data.model_scale / 2.0)
+    };
     ShipBundle {
         sprite: SpriteBundle {
             sprite: Sprite {
@@ -39,7 +44,7 @@ pub fn make_ship(_db: &ModData, data: &Ship) -> ShipBundle {
             ..Default::default()
         },
         rb: RigidBody::Dynamic,
-        collider: Collider::ball(1.0),
+        collider,
     }
 }
 

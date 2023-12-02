@@ -4,7 +4,7 @@ use crate::unit::ship::{calculate_resources, make_ship};
 use crate::unit::{Team, Unit, UnitBundle};
 use crate::ResultExt;
 use bevy::log::info;
-use bevy::prelude::{Commands, Query, Res, With};
+use bevy::prelude::{Assets, Commands, Image, Query, Res, With};
 use ehce_core::database::model::ship_build::ShipBuildData;
 use ehce_core::mods::ModData;
 use nohash_hasher::IntSet;
@@ -13,6 +13,7 @@ pub fn ship_spawn(
     ships: Query<&Team, With<Unit>>,
     mut fleets: Query<(&mut CombatFleet, &Team)>,
     db: Res<ModData>,
+    images: Res<Assets<Image>>,
     mut commands: Commands,
 ) {
     let mut team_has_ships = IntSet::default();
@@ -37,6 +38,7 @@ pub fn ship_spawn(
             &db.registry[*next.build],
             *team,
             std::mem::take(next.resources),
+            &images,
             &mut commands,
         )
         .sys_fail();
@@ -54,11 +56,12 @@ fn spawn_ship(
     build: impl AsRef<ShipBuildData>,
     team: Team,
     resources: Option<Resources>,
+    images: &Assets<Image>,
     commands: &mut Commands,
 ) -> Result<(), ShipSpawnError> {
     let build = build.as_ref();
     let ship = &db.registry[build.ship];
-    let ship_bundle = make_ship(db, ship);
+    let ship_bundle = make_ship(db, ship, images);
     let resources = if let Some(resources) = resources {
         resources
     } else {

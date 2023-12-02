@@ -1,9 +1,13 @@
 use crate::spawning::ship_spawn;
 use crate::unit::Team;
+use bevy::ecs::schedule::ScheduleLabel;
 use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_vector_shapes::prelude::*;
+use bevy_xpbd_2d::plugins::{PhysicsDebugPlugin, PhysicsPlugins};
+use bevy_xpbd_2d::prelude::PhysicsDebugConfig;
+use bevy_xpbd_2d::resources::Gravity;
 use ehce_core::database::model::combat_settings::CombatSettingsData;
 
 use ehce_core::glue::combat::CombatInit;
@@ -22,6 +26,7 @@ mod unit;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub enum CombatSet {
     PreUpdate,
+    PhysicsUpdate,
     Update,
     PostUpdate,
 }
@@ -34,6 +39,7 @@ impl Plugin for CombatPlugin {
             FixedUpdate,
             (
                 CombatSet::PreUpdate,
+                CombatSet::PhysicsUpdate,
                 CombatSet::Update,
                 CombatSet::PostUpdate,
             )
@@ -46,10 +52,24 @@ impl Plugin for CombatPlugin {
             .add_plugins(Shape2dPlugin::default());
 
         app.add_systems(FixedUpdate, ship_spawn.in_set(CombatSet::PreUpdate));
+
+        app.add_plugins((
+            PhysicsPlugins::new(PhysicsUpdate),
+            PhysicsDebugPlugin::default(),
+        ));
+        app.add_systems(FixedUpdate, run_physics.in_set(CombatSet::PhysicsUpdate));
+
         app.add_systems(Update, (update).run_if(in_state(GameState::Combat)));
 
         app.add_plugins(WorldInspectorPlugin::new());
     }
+}
+
+#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PhysicsUpdate;
+
+fn run_physics(world: &mut World) {
+    world.run_schedule(PhysicsUpdate)
 }
 
 #[derive(Debug, Resource)]
@@ -59,6 +79,14 @@ struct CombatData {
 }
 
 fn init_combat(world: &mut World) {
+    world.init_resource::<PhysicsDebugConfig>();
+    let mut physics_debug = world.get_resource_or_insert_with(PhysicsDebugConfig::default);
+    physics_debug.enabled = true;
+    physics_debug.axis_lengths = None;
+
+    let mut gravity = world.get_resource_or_insert_with(Gravity::default);
+    gravity.0 = Vec2::ZERO;
+
     let combat_init = world
         .remove_resource::<CombatInit>()
         .unwrap_or_else(|| todo!("Gracefully handle state switch error"));
@@ -66,7 +94,7 @@ fn init_combat(world: &mut World) {
         Team::new_unchecked_do_not_use_directly_its_bad_really_will_be_very_hard_to_migrate_later(
             0,
         );
-    let enemy_team =
+    let _enemy_team =
         Team::new_unchecked_do_not_use_directly_its_bad_really_will_be_very_hard_to_migrate_later(
             1,
         );
@@ -75,7 +103,7 @@ fn init_combat(world: &mut World) {
         player_team,
     });
     world.spawn((player_team, CombatFleet::from(&combat_init.player_fleet)));
-    world.spawn((enemy_team, CombatFleet::from(&combat_init.enemy_fleet)));
+    // world.spawn((enemy_team, CombatFleet::from(&combat_init.enemy_fleet)));
     world.spawn(Camera2dBundle {
         projection: OrthographicProjection {
             near: -1e9,
@@ -89,14 +117,14 @@ fn init_combat(world: &mut World) {
 
 fn exit_combat(_commands: Commands, _data: Res<CombatData>) {}
 
-fn update(query: Query<&mut Transform, With<Sprite>>, mut painter: ShapePainter) {
-    query.for_each(|e| {
-        painter.transform = *e;
-        painter.hollow = true;
-        painter.color = Color::RED;
-        painter.thickness = 0.001;
-        painter.rect(Vec2::ONE);
-    });
+fn update(_query: Query<&mut Transform, With<Sprite>>, mut _painter: ShapePainter) {
+    // query.for_each(|e| {
+    //     painter.transform = *e;
+    //     painter.hollow = true;
+    //     painter.color = Color::RED;
+    //     painter.thickness = 0.001;
+    //     painter.rect(Vec2::ONE);
+    // });
 }
 
 #[extension_trait]
