@@ -13,9 +13,10 @@ members = [
 
 [workspace.dependencies]
 attribute-derive = "0.6"
-bevy = { version = "0.12.0", default-features = false }
-bevy_common_assets = "0.8"
+bevy = { version = "0.12.1", default-features = false }
 bevy-inspector-egui = "0.21"
+bevy_common_assets = "0.8"
+bevy_mod_sysfail = { git = "https://github.com/nicopap/bevy_mod_sysfail.git", branch = "trait-failure" }
 bevy_xpbd_2d = "0.3"
 bimap = "0.6"
 bytemuck = "1"
@@ -27,8 +28,8 @@ duplicate = "1"
 euclid = { version = "0.22", features = ["bytemuck"] }
 exmex = "0.18"
 extension-trait = "1"
-glam = { version = "0.24", features = ["bytemuck"] }
 geo = "0.27"
+glam = { version = "0.24", features = ["bytemuck"] }
 itertools = "0.12"
 miette = { version = "5", features = ["fancy"] }
 nohash-hasher = "0.2"
@@ -36,12 +37,12 @@ paste = "1"
 proc-macro2 = "1.0"
 quote = "1.0"
 rustc-hash = "1"
+schemars = "0.8"
 serde = "1"
 serde_derive = "1"
 serde_json5 = "0.1"
 slab = "0.4"
 soa_derive = "0.13"
-schemars = "0.8"
 strum = "0.25"
 strum_macros = "0.25"
 syn = "2.0"
