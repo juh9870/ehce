@@ -860,6 +860,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_sysfail"
+version = "5.0.0"
+source = "git+https://github.com/nicopap/bevy_mod_sysfail.git?branch=trait-failure#b142488d9ee868d3882ee9f1efcc25327226af9b"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "bevy_ecs",
+ "bevy_mod_sysfail_macros",
+ "bevy_utils",
+]
+
+[[package]]
+name = "bevy_mod_sysfail_macros"
+version = "4.2.0"
+source = "git+https://github.com/nicopap/bevy_mod_sysfail.git?branch=trait-failure#b142488d9ee868d3882ee9f1efcc25327226af9b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.39",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1476,12 +1498,12 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_mod_sysfail",
  "bevy_vector_shapes",
  "bevy_xpbd_2d",
  "collider_generator",
  "ehce_core",
  "exmex",
- "extension-trait",
  "itertools 0.12.0",
  "miette",
  "nohash-hasher",
@@ -2063,17 +2085,6 @@ dependencies = [
  "num",
  "regex",
  "smallvec",
-]
-
-[[package]]
-name = "extension-trait"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd65f1b59dd22d680c7a626cc4a000c1e03d241c51c3e034d2bc9f1e90734f9b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.39",
 ]
 
 [[package]]

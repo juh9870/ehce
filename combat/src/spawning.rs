@@ -2,13 +2,15 @@ use crate::fleet::CombatFleet;
 use crate::resources::{ResourceEvaluationError, Resources};
 use crate::unit::ship::{calculate_resources, make_ship};
 use crate::unit::{Team, Unit, UnitBundle};
-use crate::ResultExt;
+use crate::EmitCombatError;
 use bevy::log::info;
 use bevy::prelude::{Assets, Commands, Image, Query, Res, With};
+use bevy_mod_sysfail::sysfail;
 use ehce_core::database::model::ship_build::ShipBuildData;
 use ehce_core::mods::ModData;
 use nohash_hasher::IntSet;
 
+#[sysfail(EmitCombatError)]
 pub fn ship_spawn(
     ships: Query<&Team, With<Unit>>,
     mut fleets: Query<(&mut CombatFleet, &Team)>,
@@ -40,8 +42,7 @@ pub fn ship_spawn(
             std::mem::take(next.resources),
             &images,
             &mut commands,
-        )
-        .sys_fail();
+        )?;
     }
 }
 

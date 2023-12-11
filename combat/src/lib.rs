@@ -1,9 +1,13 @@
 use crate::spawning::ship_spawn;
 use crate::unit::Team;
 use bevy::ecs::schedule::ScheduleLabel;
+use bevy::ecs::system::SystemParam;
+use bevy::log::Level;
 use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
+use bevy::utils::tracing::Callsite;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_mod_sysfail::Failure;
 use bevy_vector_shapes::prelude::*;
 use bevy_xpbd_2d::plugins::{PhysicsDebugPlugin, PhysicsPlugins};
 use bevy_xpbd_2d::prelude::PhysicsDebugConfig;
@@ -13,9 +17,9 @@ use ehce_core::database::model::combat_settings::CombatSettingsData;
 use ehce_core::glue::combat::CombatInit;
 use ehce_core::mods::HotReloading;
 use ehce_core::GameState;
-use extension_trait::extension_trait;
+
 use fleet::CombatFleet;
-use miette::Report;
+use miette::{Diagnostic, Report};
 
 mod fleet;
 mod resources;
@@ -47,6 +51,9 @@ impl Plugin for CombatPlugin {
                 .after(HotReloading)
                 .run_if(in_state(GameState::Combat)),
         );
+
+        app.init_resource::<Events<CombatErrorEvent>>();
+
         app.add_systems(OnEnter(GameState::Combat), init_combat)
             .add_systems(OnExit(GameState::Combat), exit_combat)
             .add_plugins(Shape2dPlugin::default());
@@ -60,6 +67,7 @@ impl Plugin for CombatPlugin {
         app.add_systems(FixedUpdate, run_physics.in_set(CombatSet::PhysicsUpdate));
 
         app.add_systems(Update, (update).run_if(in_state(GameState::Combat)));
+        app.add_systems(Last, (error_handler).run_if(in_state(GameState::Combat)));
 
         app.add_plugins(WorldInspectorPlugin::new());
     }
@@ -127,15 +135,37 @@ fn update(_query: Query<&mut Transform, With<Sprite>>, mut _painter: ShapePainte
     // });
 }
 
-#[extension_trait]
-pub impl<T, E: Into<Report>> ResultExt<T> for Result<T, E> {
-    fn sys_fail(self) -> T {
-        match self {
-            Ok(data) => data,
-            Err(err) => {
-                error!("Something gone wrong.\n{:?}", err.into());
-                std::process::exit(1);
-            }
-        }
+pub struct EmitCombatError(pub Report);
+
+impl<T: Diagnostic + Send + Sync + 'static> From<T> for EmitCombatError {
+    fn from(value: T) -> Self {
+        Self(value.into())
     }
+}
+
+impl Failure for EmitCombatError {
+    type Param = EventWriter<'static, CombatErrorEvent>;
+    const LEVEL: Level = Level::ERROR;
+
+    fn handle_error(
+        self,
+        mut param: <Self::Param as SystemParam>::Item<'_, '_>,
+        _: Option<&'static impl Callsite>,
+    ) {
+        param.send(CombatErrorEvent(self.0))
+    }
+}
+
+#[derive(Debug, Event)]
+pub struct CombatErrorEvent(Report);
+
+fn error_handler(mut errors: ResMut<Events<CombatErrorEvent>>) {
+    if errors.is_empty() {
+        return;
+    }
+    for event in errors.drain() {
+        error!("{:?}", event.0);
+    }
+
+    std::process::exit(1);
 }
