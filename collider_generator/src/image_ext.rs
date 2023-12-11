@@ -3,11 +3,34 @@ use bevy::math::UVec3;
 use bevy::prelude::{Color, Image};
 use bevy::render::render_resource::{TextureDimension, TextureFormat};
 use bevy::render::texture::TextureFormatPixelInfo;
-use extension_trait::extension_trait;
+
 use thiserror::Error;
 
-#[extension_trait]
-pub impl ImageExt for Image {
+pub trait ImageExt {
+    fn pixel_data_offset(&self, coords: UVec3) -> Option<usize>;
+    fn pixel_bytes(&self, coords: UVec3) -> Option<&[u8]>;
+    fn pixel_bytes_mut(&mut self, coords: UVec3) -> Option<&mut [u8]>;
+    fn get_color_at_1d(&self, x: u32) -> Result<Color, TextureAccessError>;
+    fn get_color_at(&self, x: u32, y: u32) -> Result<Color, TextureAccessError>;
+    fn get_color_at_3d(&self, x: u32, y: u32, z: u32) -> Result<Color, TextureAccessError>;
+    fn set_color_at_1d(&mut self, x: u32, color: Color) -> Result<(), TextureAccessError>;
+    fn set_color_at(&mut self, x: u32, y: u32, color: Color) -> Result<(), TextureAccessError>;
+    fn set_color_at_3d(
+        &mut self,
+        x: u32,
+        y: u32,
+        z: u32,
+        color: Color,
+    ) -> Result<(), TextureAccessError>;
+    fn get_color_at_internal(&self, coords: UVec3) -> Result<Color, TextureAccessError>;
+    fn set_color_at_internal(
+        &mut self,
+        coords: UVec3,
+        color: Color,
+    ) -> Result<(), TextureAccessError>;
+}
+
+impl ImageExt for Image {
     /// Compute the byte offset where the data of a specific pixel is stored
     ///
     /// Returns None if the provided coordinates are out of bounds.

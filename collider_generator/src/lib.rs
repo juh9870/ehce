@@ -57,18 +57,13 @@ pub fn compute_collider(
     }) {
         let last_index = vertices.len();
 
-        indices.extend(
-            triangulation
-                .triangle_indices
-                .chunks_exact(3)
-                .map(|c| {
-                    [
-                        (c[0] + last_index) as u32,
-                        (c[1] + last_index) as u32,
-                        (c[2] + last_index) as u32,
-                    ]
-                }),
-        );
+        indices.extend(triangulation.triangle_indices.chunks_exact(3).map(|c| {
+            [
+                (c[0] + last_index) as u32,
+                (c[1] + last_index) as u32,
+                (c[2] + last_index) as u32,
+            ]
+        }));
 
         vertices.extend(
             triangulation
@@ -95,14 +90,10 @@ pub fn compute_collider_for_texture(image: &Image, optimization_threshold: f32) 
         }
     }
 
-    compute_collider(
-        processed.as_slice(),
-        cols,
-        rows,
-        optimization_threshold,
+    compute_collider(processed.as_slice(), cols, rows, optimization_threshold).unwrap_or_else(
+        |err| {
+            error!(?err);
+            std::process::exit(1)
+        },
     )
-    .unwrap_or_else(|err| {
-        error!(?err);
-        std::process::exit(1)
-    })
 }
