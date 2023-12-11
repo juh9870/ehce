@@ -5,29 +5,54 @@ use thiserror::Error;
 pub use paste::paste;
 
 #[macro_export]
-macro_rules! bubbled {
-    ($name:ident($message:literal) { $($variant:ty),* $(,)? }) => {
-
+macro_rules! _bubbled_impl {
+    ($name:ident, $($variant:ty),*) => {
         $crate::miette_ext::paste! {
             #[derive(Debug, thiserror::Error, miette::Diagnostic)]
             pub enum $name {
                 $(
-                    [<$variant>](#[diagnostic_source] $variant),
+                    [<$variant>](#[diagnostic_source] $variant)
                 ),*
             }
 
             $(
+                #[automatically_derived]
                 impl From<$variant> for $name {
+                    #[inline(always)]
                     fn from(value: $variant) -> Self {
                         Self::[<$variant>](value)
                     }
                 }
             )*
+        }
+    };
+}
 
+#[macro_export]
+macro_rules! bubbled {
+    ($name:ident($message:literal) { $($variant:ty),* $(,)? }) => {
+        $crate::_bubbled_impl!($name, $($variant),*);
+
+        #[automatically_derived]
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", $message)
+            }
+        }
+    };
+    ($name:ident { $($variant:ty),* $(,)? }) => {
+        $crate::_bubbled_impl!($name, $($variant),*);
+
+
+        $crate::miette_ext::paste! {
             #[automatically_derived]
             impl std::fmt::Display for $name {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    write!(f, "{}", $message)
+                    match self {
+                        $(
+                            Self::[<$variant>](data) => write!(f, "{}", data)
+                        ),*
+                    }
                 }
             }
         }
