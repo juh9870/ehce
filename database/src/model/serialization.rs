@@ -370,3 +370,29 @@ where
     map.key_to_id(key)
         .map(|e| e.as_untyped().as_typed_unchecked())
 }
+
+#[derive(Debug, Clone)]
+pub struct RegistryEntry<Data> {
+    pub id: SlabMapId<Self>,
+    pub data: Data,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RegistryEntrySerialized<DataSerialized> {
+    pub id: ItemId,
+    #[serde(flatten)]
+    pub data: DataSerialized,
+}
+
+impl<Data: ModelDeserializableFallbackType> ModelDeserializableFallbackType
+    for RegistryEntry<Data>
+{
+    type Serialized = RegistryEntrySerialized<Data::Serialized>;
+}
+
+impl<Data> AsRef<Data> for RegistryEntry<Data> {
+    fn as_ref(&self) -> &Data {
+        &self.data
+    }
+}

@@ -1,7 +1,6 @@
 {
-  "ShipBuild": {
-    "id": "eh:tarus",
-    "ship": "eh:tarus",
-    "components": []
-  }
+  "type": "ShipBuild",
+  "id": "eh:tarus",
+  "ship": "eh:tarus",
+  "components": []
 }

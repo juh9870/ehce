@@ -12,12 +12,12 @@ use bevy_vector_shapes::prelude::*;
 use bevy_xpbd_2d::plugins::{PhysicsDebugPlugin, PhysicsPlugins};
 use bevy_xpbd_2d::prelude::PhysicsDebugConfig;
 use bevy_xpbd_2d::resources::Gravity;
-use ehce_core::database::model::combat_settings::CombatSettingsData;
 
 use ehce_core::glue::combat::CombatInit;
 use ehce_core::mods::HotReloading;
 use ehce_core::GameState;
 
+use ehce_core::database::model::combat_settings::CombatSettings;
 use fleet::CombatFleet;
 use miette::{Diagnostic, Report};
 
@@ -82,7 +82,7 @@ fn run_physics(world: &mut World) {
 
 #[derive(Debug, Resource)]
 struct CombatData {
-    combat_settings: CombatSettingsData,
+    combat_settings: CombatSettings,
     player_team: Team,
 }
 

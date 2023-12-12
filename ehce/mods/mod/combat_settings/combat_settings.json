@@ -1,5 +1,4 @@
 {
-  "CombatSettings": {
-    "id": "eh:default"
-  }
+  "id": "eh:default",
+  "type": "CombatSettings"
 }

@@ -26,7 +26,9 @@ pub mod formula;
 
 mod serialization;
 
-#[derive(Debug, serde::Deserialize, bevy::asset::Asset, bevy::reflect::TypePath)]
+#[derive(
+    Debug, serde::Deserialize, serde::Serialize, bevy::asset::Asset, bevy::reflect::TypePath,
+)]
 #[serde(transparent)]
 pub struct DatabaseAsset(pub DatabaseItemSerialized);
 
@@ -38,10 +40,6 @@ pub trait DatabaseItemTrait {
 pub trait DatabaseItemSerializedTrait {
     fn id(&self) -> &ItemId;
     fn kind(&self) -> DatabaseItemKind;
-}
-
-pub trait DatabaseModelSerializationHelper {
-    type Serialized;
 }
 
 pub trait ModelKind {
@@ -146,7 +144,7 @@ macro_rules! registry {
             #[strum_discriminants(name(DatabaseItemKind))]
             pub enum DatabaseItem {
                 $(
-                    [< $name:camel >]($ty),
+                    [< $name:camel >](RegistryEntry<$ty>),
                 )*
             }
 
@@ -168,14 +166,14 @@ macro_rules! registry {
                 }
             }
 
-            impl DatabaseModelSerializationHelper for DatabaseItem {
+            impl serialization::ModelDeserializableFallbackType for DatabaseItem {
                 type Serialized = DatabaseItemSerialized;
             }
 
             #[derive(Debug, Clone, EnumIs)]
             pub enum DatabaseItemRef<'a> {
                 $(
-                    [<$name:camel>](&'a $ty),
+                    [<$name:camel>](&'a RegistryEntry<$ty>),
                 )*
             }
 
@@ -198,24 +196,24 @@ macro_rules! registry {
             }
 
             $(
-                impl<'a> From<&'a $ty> for DatabaseItemRef<'a> {
-                    fn from(value: &'a $ty) -> Self {
+                impl<'a> From<&'a RegistryEntry<$ty>> for DatabaseItemRef<'a> {
+                    fn from(value: &'a RegistryEntry<$ty>) -> Self {
                         Self::[<$name:camel>](value)
                     }
                 }
             )*
 
             $(
-                impl From<SlabMapId<$ty>> for RegistryKeyOrId<ItemId> {
-                    fn from(item: SlabMapId<$ty>) -> RegistryKeyOrId<ItemId> {
+                impl From<SlabMapId<RegistryEntry<$ty>>> for RegistryKeyOrId<ItemId> {
+                    fn from(item: SlabMapId<RegistryEntry<$ty>>) -> RegistryKeyOrId<ItemId> {
                         RegistryKeyOrId {
                             kind: DatabaseItemKind::[<$name:camel>],
                             id: SlabMapKeyOrUntypedId::Id(item.as_untyped()),
                         }
                     }
                 }
-                impl From<SlabMapId<$ty>> for RegistryId {
-                    fn from(item: SlabMapId<$ty>) -> RegistryId {
+                impl From<SlabMapId<RegistryEntry<$ty>>> for RegistryId {
+                    fn from(item: SlabMapId<RegistryEntry<$ty>>) -> RegistryId {
                         RegistryId {
                             kind: DatabaseItemKind::[<$name:camel>],
                             id: item.as_untyped(),
@@ -227,7 +225,7 @@ macro_rules! registry {
             #[derive(Debug, Default)]
             pub struct ModRegistry {
                 $(
-                    pub $name: ModelStore<$ty>,
+                    pub $name: ModelStore<RegistryEntry<$ty>>,
                 )*
             }
 
@@ -348,7 +346,7 @@ macro_rules! registry_partial {
                 raw: RawModRegistry,
                 assets: ModAssets,
                 $(
-                    pub $name: ModelStore<Option<$ty>>,
+                    pub $name: ModelStore<Option<RegistryEntry<$ty>>>,
                 )*
             }
 
@@ -369,12 +367,12 @@ macro_rules! registry_raw {
     ($($name:ident: $ty:ty),*$(,)?) => {
         paste! {
             #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema, EnumIs)]
-            // #[serde(tag = "type")]
+            #[serde(tag = "type")]
             #[serde(rename_all = "PascalCase")]
             #[serde(rename = "DatabaseItem")]
             pub enum DatabaseItemSerialized {
                 $(
-                    [< $name:camel >](<$ty as DatabaseModelSerializationHelper>::Serialized),
+                    [< $name:camel >](<RegistryEntry<$ty> as serialization::ModelDeserializableFallbackType>::Serialized),
                 )*
             }
 
@@ -397,8 +395,8 @@ macro_rules! registry_raw {
             }
 
             $(
-                impl From<<$ty as DatabaseModelSerializationHelper>::Serialized> for DatabaseItemSerialized {
-                    fn from(value: <$ty as DatabaseModelSerializationHelper>::Serialized) -> Self {
+                impl From<<RegistryEntry<$ty> as serialization::ModelDeserializableFallbackType>::Serialized> for DatabaseItemSerialized {
+                    fn from(value: <RegistryEntry<$ty> as serialization::ModelDeserializableFallbackType>::Serialized) -> Self {
                         Self::[< $name:camel >](value)
                     }
                 }
@@ -407,7 +405,7 @@ macro_rules! registry_raw {
             #[derive(Debug, Default)]
             struct RawModRegistry {
                 $(
-                    pub $name: FxHashMap<ItemId, <$ty as DatabaseModelSerializationHelper>::Serialized>,
+                    pub $name: FxHashMap<ItemId, <RegistryEntry<$ty> as serialization::ModelDeserializableFallbackType>::Serialized>,
                 )*
             }
 
@@ -440,18 +438,96 @@ macro_rules! id_index {
     ($($name:ident: $ty:ty),*$(,)?) => {
         paste! {
             $(
-                impl Index<SlabMapId<$ty>> for ModRegistry {
-                    type Output = $ty;
+                impl Index<SlabMapId<RegistryEntry<$ty>>> for ModRegistry {
+                    type Output = RegistryEntry<$ty>;
 
-                    fn index(&self, index: SlabMapId<$ty>) -> &Self::Output {
+                    fn index(&self, index: SlabMapId<RegistryEntry<$ty>>) -> &Self::Output {
                         &self.$name[index]
                     }
                 }
-                impl Index<&SlabMapId<$ty>> for ModRegistry {
-                    type Output = $ty;
+                impl Index<&SlabMapId<RegistryEntry<$ty>>> for ModRegistry {
+                    type Output = RegistryEntry<$ty>;
 
-                    fn index(&self, index: &SlabMapId<$ty>) -> &Self::Output {
+                    fn index(&self, index: &SlabMapId<RegistryEntry<$ty>>) -> &Self::Output {
                         &self.$name[*index]
+                    }
+                }
+            )*
+        }
+    };
+}
+
+macro_rules! serialization_traits {
+    ($($name:ident: $ty:ty),*$(,)?) => {
+        paste! {
+            $(
+                pub type [<$name:camel Id>] = SlabMapId<RegistryEntry<$ty>>;
+                impl DatabaseItemTrait for RegistryEntry<$ty> {
+                    fn id(&self) -> SlabMapUntypedId {
+                        self.id.as_untyped()
+                    }
+                    fn kind(&self) -> DatabaseItemKind {
+                        DatabaseItemKind::[<$name:camel>]
+                    }
+                }
+                impl ModelKind for RegistryEntry<$ty> {
+                    fn kind() -> DatabaseItemKind {
+                        DatabaseItemKind::[<$name:camel>]
+                    }
+                }
+                impl DatabaseItemSerializedTrait for <RegistryEntry<$ty> as serialization::ModelDeserializableFallbackType>::Serialized {
+                    fn id(&self) -> &ItemId {
+                        &self.id
+                    }
+                    fn kind(&self) -> DatabaseItemKind {
+                        DatabaseItemKind::[<$name:camel>]
+                    }
+                }
+
+                impl serialization::ModelDeserializable<SlabMapId<RegistryEntry<$ty>>>
+                    for <RegistryEntry<$ty> as serialization::ModelDeserializableFallbackType>::Serialized
+                {
+                    fn deserialize(
+                        self,
+                        registry: &mut PartialModRegistry,
+                    ) -> Result<SlabMapId<RegistryEntry<$ty>>, serialization::DeserializationError> {
+                        let reserved = serialization::reserve(&mut registry.$name, self.id.clone())?;
+                        let data = serialization::ModelDeserializable::<$ty>::deserialize(
+                            self.data, registry,
+                        )
+                        .map_err(|e| {
+                            e.context(
+                                serialization::DeserializationErrorStackItem::Item(
+                                    self.id,
+                                    <RegistryEntry::<$ty> as ModelKind>::kind(),
+                                ),
+                            )
+                        })?;
+                        let id = reserved.raw();
+                        let model = RegistryEntry { id, data };
+                        let id = serialization::insert_reserved(&mut registry.$name, reserved, model);
+                        Ok(id)
+                    }
+                }
+                #[automatically_derived]
+                impl serialization::ModelDeserializable<[<$name:camel Id>]> for &str {
+                    fn deserialize(
+                        self,
+                        registry: &mut crate::model::PartialModRegistry,
+                    ) -> Result<[<$name:camel Id>], serialization::DeserializationError> {
+                        if let Some(id) = serialization::get_reserved_key(&mut registry.$name, self) {
+                            return Ok(id);
+                        }
+                        let Some(other) = registry.raw.$name.remove(self) else {
+                            return Err(
+                                serialization::DeserializationErrorKind::MissingItem(
+                                    self.to_string(),
+                                    <RegistryEntry::<$ty> as ModelKind>::kind(),
+                                )
+                                .into(),
+                            );
+                        };
+                        other.deserialize(registry)
                     }
                 }
             )*
@@ -473,11 +549,12 @@ macro_rules! call_with_all_models {
         );
     };
 }
-
 pub(crate) use call_with_all_models;
+use serialization::RegistryEntry;
 
 // registry!(ship: ship::Ship, ship_build: ship_build::ShipBuild);
 call_with_all_models!(registry_raw);
 call_with_all_models!(registry_partial);
 call_with_all_models!(registry);
 call_with_all_models!(id_index);
+call_with_all_models!(serialization_traits);

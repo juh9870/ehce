@@ -78,6 +78,13 @@ pub fn process_enum(
         }
 
         #[automatically_derived]
+        impl AsRef<#model_name> for #model_name {
+            fn as_ref(&self) -> &#model_name {
+                &self
+            }
+        }
+
+        #[automatically_derived]
         impl #serialization_mod::ModelDeserializableFallbackType for #model_name {
             type Serialized = #serialized_name;
         }

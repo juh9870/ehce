@@ -6,7 +6,7 @@ use crate::EmitCombatError;
 use bevy::log::info;
 use bevy::prelude::{Assets, Commands, Image, Query, Res, With};
 use bevy_mod_sysfail::sysfail;
-use ehce_core::database::model::ship_build::ShipBuildData;
+use ehce_core::database::model::ship_build::ShipBuild;
 use ehce_core::mods::ModData;
 use nohash_hasher::IntSet;
 
@@ -54,7 +54,7 @@ utils::bubbled!(
 
 fn spawn_ship(
     db: &ModData,
-    build: impl AsRef<ShipBuildData>,
+    build: impl AsRef<ShipBuild>,
     team: Team,
     resources: Option<Resources>,
     images: &Assets<Image>,

@@ -1,12 +1,10 @@
-use crate::model::resource::Resource;
 use crate::model::serialization::{
     DeserializationError, DeserializationErrorStackItem, DeserializeFrom, ModelDeserializable,
     ModelDeserializableFallbackType,
 };
-use crate::model::PartialModRegistry;
+use crate::model::{PartialModRegistry, ResourceId};
 use exmex::{Calculate, Express};
 use itertools::Itertools;
-use utils::slab_map::SlabMapId;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[serde(untagged)]
@@ -18,7 +16,7 @@ pub enum SerializedFormula {
 #[derive(Debug, Clone)]
 pub struct Formula {
     pub expr: exmex::FlatEx<f64>,
-    pub args: Vec<SlabMapId<Resource>>,
+    pub args: Vec<ResourceId>,
 }
 
 impl ModelDeserializableFallbackType for Formula {
@@ -53,7 +51,7 @@ impl ModelDeserializable<Formula> for &str {
             .var_names()
             .iter()
             .map(|id| {
-                SlabMapId::<Resource>::deserialize_from(id.as_str(), registry).map_err(|e| {
+                ResourceId::deserialize_from(id.as_str(), registry).map_err(|e| {
                     e.context(DeserializationErrorStackItem::ExprVariable(id.to_string()))
                 })
             })

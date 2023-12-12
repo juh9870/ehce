@@ -13,7 +13,7 @@ pub struct Json5AssetPlugin<A> {
 
 impl<A> Plugin for Json5AssetPlugin<A>
 where
-    for<'de> A: serde::Deserialize<'de> + Asset,
+    for<'de> A: serde::Deserialize<'de> + serde::Serialize + Asset,
 {
     fn build(&self, app: &mut App) {
         app.init_asset::<A>()
@@ -56,7 +56,7 @@ pub enum JsonLoaderError {
 
 impl<A> AssetLoader for JsonAssetLoader<A>
 where
-    for<'de> A: serde::Deserialize<'de> + Asset,
+    for<'de> A: serde::Deserialize<'de> + serde::Serialize + Asset,
 {
     type Asset = A;
     type Settings = ();

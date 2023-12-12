@@ -5,7 +5,6 @@ use bevy::app::App;
 use bevy::ecs::prelude::States;
 use bevy::prelude::*;
 
-use bevy_common_assets::ron::RonAssetPlugin;
 use database::model::DatabaseAsset;
 use std::marker::PhantomData;
 
@@ -38,7 +37,6 @@ impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<GameState>().add_plugins((
             Json5AssetPlugin::<DatabaseAsset>::new(&["json", "json5"]),
-            RonAssetPlugin::<DatabaseAsset>::new(&["ron"]),
             InitPlugin,
             ModPlugin,
         ));

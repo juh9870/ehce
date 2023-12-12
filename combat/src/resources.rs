@@ -1,7 +1,7 @@
 use bevy::prelude::Component;
 use bevy::utils::thiserror::Error;
 use ehce_core::database::model::formula::Formula;
-use ehce_core::database::model::ItemId;
+use ehce_core::database::model::{ItemId, ResourceId};
 use itertools::Itertools;
 use miette::Diagnostic;
 use nohash_hasher::IntMap;
@@ -9,7 +9,6 @@ use soa_derive::StructOfArray;
 
 use std::sync::{Arc, Mutex};
 
-use ehce_core::database::model::resource::ResourceId;
 use ehce_core::mods::ModData;
 
 /// Component to track entity resources
@@ -92,7 +91,7 @@ impl Resources {
             }
             let res = &db.registry[res_id];
 
-            let default = if let Some(default) = &res.default {
+            let default = if let Some(default) = &res.data.default {
                 let args = default
                     .args
                     .iter()
@@ -106,7 +105,7 @@ impl Resources {
                 0.0
             };
 
-            (&res.computed, default)
+            (&res.data.computed, default)
         };
 
         if let Some(formula) = formula {
@@ -287,7 +286,7 @@ impl Resources {
             resource_id,
             cache: None,
             value: 0.0,
-            formula: res.computed.clone(),
+            formula: res.data.computed.clone(),
             deps: vec![],
             rdeps: vec![],
         });
@@ -322,10 +321,10 @@ impl Resources {
             Ok(())
         }
 
-        if res.computed.is_some() || res.default.is_some() {
+        if res.data.computed.is_some() || res.data.default.is_some() {
             in_progress.push(resource_id);
 
-            if let Some(computed) = &res.computed {
+            if let Some(computed) = &res.data.computed {
                 for arg in &computed.args {
                     check_deps(in_progress, db, arg)?;
 
@@ -339,7 +338,7 @@ impl Resources {
                 }
             }
 
-            if let Some(default) = &res.default {
+            if let Some(default) = &res.data.default {
                 let mut args = Vec::with_capacity(default.args.len());
                 for arg in &default.args {
                     check_deps(in_progress, db, arg)?;

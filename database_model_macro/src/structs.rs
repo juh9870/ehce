@@ -1,13 +1,15 @@
-use crate::{fallthrough, model_mod, serialization_mod, serialized_type, AttributeInput};
+use proc_macro::TokenStream;
+use std::hash::{BuildHasher, BuildHasherDefault};
+
 use attribute_derive::Attribute;
 use convert_case::{Case, Casing};
-use proc_macro::TokenStream;
 use proc_macro2::{Ident, Literal};
 use quote::{format_ident, quote, quote_spanned};
 use rustc_hash::FxHasher;
-use std::hash::{BuildHasher, BuildHasherDefault};
 use syn::spanned::Spanned;
 use syn::{Error, ItemStruct, Type};
+
+use crate::{fallthrough, model_mod, serialization_mod, serialized_type, AttributeInput};
 
 #[derive(Debug)]
 enum Modifier {
@@ -30,8 +32,6 @@ struct FieldAttributeInput {
     min: Option<Literal>,
     /// Applies max validator to the field
     max: Option<Literal>,
-    /// Marks field as ID, turning whole marked struct into a database model
-    id: bool,
     /// Generated AsRef implementation for marked struct to value of this field
     as_ref: bool,
     /// Custom serialized field type
@@ -55,7 +55,6 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
 
     let serialization_mod = serialization_mod();
     let model_mod = model_mod();
-    let mut id_field = None;
 
     let attr = AttributeInput::from_args(attr.into())?;
 
@@ -84,12 +83,6 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
                         &self.#name
                     }
                 }
-                #[automatically_derived]
-                impl AsRef<#ty> for #ty {
-                    fn as_ref(&self) -> &#ty {
-                        &self
-                    }
-                }
             })
         }
 
@@ -110,15 +103,6 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
             definition,
             original_type: ty.clone(),
         };
-        if attribute_data.id {
-            if id_field.is_some() {
-                return Err(Error::new(
-                    field.span(),
-                    "At most one field can be marked by #[model(id)]",
-                ));
-            }
-            id_field = Some(name);
-        }
         attribute_data.apply(&mut field_data);
 
         fields.push(field_data)
@@ -143,6 +127,13 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
         }
 
         #(#as_refs)*
+
+        #[automatically_derived]
+        impl AsRef<#model_name> for #model_name {
+            fn as_ref(&self) -> &#model_name {
+                &self
+            }
+        }
     );
 
     let map_name = attr.name.unwrap_or_else(|| {
@@ -152,13 +143,13 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
             .to_case(Case::Snake)
     });
     let kind_name = map_name.from_case(Case::Snake).to_case(Case::Pascal);
-    let map_name = format_ident!("{}", map_name);
-    let kind_name = format_ident!("{}", kind_name);
+    let _map_name = format_ident!("{}", map_name);
+    let _kind_name = format_ident!("{}", kind_name);
 
     let names = fields.iter().map(|e| &e.name);
     let hasher = BuildHasherDefault::<FxHasher>::default();
 
-    let reservation_field_name = format_ident!("reserved_{}__", hasher.hash_one(&data.ident));
+    let _reservation_field_name = format_ident!("reserved_{}__", hasher.hash_one(&data.ident));
     let serialized_field_name = format_ident!("serialized_{}__", hasher.hash_one(&data.ident));
 
     let modifiers = fields.iter().map(|f| {
@@ -166,144 +157,49 @@ pub fn process_struct(attr: TokenStream, mut data: ItemStruct) -> Result<TokenSt
         let data = syn::Ident::new("data", name.span());
         let original_type = &f.original_type;
         let name_string = name.to_string();
-        let id_handler = if let Some(id) = id_field {
-            quote!(
-                .context(#serialization_mod::DeserializationErrorStackItem::Item(#serialized_field_name.#id, #model_mod::DatabaseItemKind::#kind_name))
-            )
-        } else {
-            quote!()
-        };
         let err_handler_start = quote! {
             match
         };
         let err_handler_end = quote! {
             {
                 Ok(data) => data,
-                Err(err) => return Err(err.context(#serialization_mod::DeserializationErrorStackItem::Field(#name_string))#id_handler),
+                Err(err) => return Err(err.context(#serialization_mod::DeserializationErrorStackItem::Field(#name_string))),
             }
         };
-        if !id_field.map(|e|e==name).unwrap_or(false) {
-            let modifier_body = f.modifiers
-                .iter()
-                .rfold(quote!(#data), |stream, modifier| match modifier {
-                    Modifier::Min(num) => {
-                        quote! {
-                            let #data: #original_type = #err_handler_start #serialization_mod::ApplyMin::apply(#data, #num) #err_handler_end;
-                            #stream
-                        }
+        let modifier_body = f.modifiers
+            .iter()
+            .rfold(quote!(#data), |stream, modifier| match modifier {
+                Modifier::Min(num) => {
+                    quote! {
+                        let #data: #original_type = #err_handler_start #serialization_mod::ApplyMin::apply(#data, #num) #err_handler_end;
+                        #stream
                     }
-                    Modifier::Max(num) => {
-                        quote! {
-                            let #data: #original_type = #err_handler_start #serialization_mod::ApplyMax::apply(#data, #num) #err_handler_end;
-                            #stream
-                        }
+                }
+                Modifier::Max(num) => {
+                    quote! {
+                        let #data: #original_type = #err_handler_start #serialization_mod::ApplyMax::apply(#data, #num) #err_handler_end;
+                        #stream
                     }
-                });
-            quote_spanned! { original_type.span()=>
-                let #name = {
-                    let #data: #original_type = #err_handler_start #serialization_mod::ModelDeserializable::<#original_type>::deserialize(#serialized_field_name.#name, registry) #err_handler_end;
-                    #modifier_body
-                };
-            }
-        } else {
-            quote! {} // assigned at a later date
+                }
+            });
+        quote_spanned! { original_type.span()=>
+            let #name = {
+                let #data: #original_type = #err_handler_start #serialization_mod::ModelDeserializable::<#original_type>::deserialize(#serialized_field_name.#name, registry) #err_handler_end;
+                #modifier_body
+            };
         }
     });
 
-    let deserialization_impl = if let Some(id_field) = id_field {
-        let id_name = format_ident!("{}Id", model_name);
-        quote! {
+    let deserialization_impl = quote! {
+        #[automatically_derived]
+        impl #serialization_mod::ModelDeserializable<#model_name> for #serialized_name {
+            fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#model_name, #serialization_mod::DeserializationError> {
+                let #serialized_field_name = self;
+                #(#modifiers)*
 
-            pub type #id_name = #model_mod::SlabMapId<#model_name>;
-
-            #[automatically_derived]
-            impl #model_mod::DatabaseItemTrait for #model_name {
-                fn id(&self) -> utils::slab_map::SlabMapUntypedId {
-                    self.id.as_untyped()
-                }
-
-                fn kind(&self) -> #model_mod::DatabaseItemKind {
-                    #model_mod::DatabaseItemKind::#kind_name
-                }
-            }
-
-            #[automatically_derived]
-            impl #model_mod::DatabaseModelSerializationHelper for #model_name {
-                type Serialized = #serialized_name;
-            }
-
-            #[automatically_derived]
-            impl #model_mod::ModelKind for #model_name {
-                fn kind() -> #model_mod::DatabaseItemKind {
-                    #model_mod::DatabaseItemKind::#kind_name
-                }
-            }
-
-            #[automatically_derived]
-            impl #model_mod::ModelKind for #serialized_name {
-                fn kind() -> #model_mod::DatabaseItemKind {
-                    #model_mod::DatabaseItemKind::#kind_name
-                }
-            }
-
-            #[automatically_derived]
-            impl #model_mod::DatabaseItemSerializedTrait for #serialized_name {
-                fn id(&self) -> &#model_mod::ItemId {
-                    &self.id
-                }
-
-                fn kind(&self) -> #model_mod::DatabaseItemKind {
-                    #model_mod::DatabaseItemKind::#kind_name
-                }
-            }
-
-            #[automatically_derived]
-            impl #serialization_mod::ModelDeserializable<#id_name> for #serialized_name {
-                fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#id_name, #serialization_mod::DeserializationError> {
-                    let #serialized_field_name = self;
-                    let #reservation_field_name = #serialization_mod::reserve(&mut registry.#map_name, #serialized_field_name.#id_field.clone())?;
-
-                    #(#modifiers)*
-
-                    let #id_field = #reservation_field_name.raw();
-                    let model = #model_name {
-                        #(#names),*
-                    };
-                    let id = #serialization_mod::insert_reserved(&mut registry.#map_name, #reservation_field_name, model);
-
-                    Ok(id)
-                }
-            }
-
-            #[automatically_derived]
-            impl #serialization_mod::ModelDeserializable<#id_name> for &str {
-                fn deserialize(
-                    self,
-                    registry: &mut #model_mod::PartialModRegistry,
-                ) -> Result<#id_name, #serialization_mod::DeserializationError> {
-                    if let Some(id) = #serialization_mod::get_reserved_key(&mut registry.#map_name, self) {
-                        return Ok(id)
-                    }
-                    let Some(other) = registry.raw.#map_name.remove(self) else {
-                        return Err(#serialization_mod::DeserializationErrorKind::MissingItem(self.to_string(), #model_mod::DatabaseItemKind::#kind_name).into());
-                    };
-
-                    other.deserialize(registry)
-                }
-            }
-        }
-    } else {
-        quote! {
-            #[automatically_derived]
-            impl #serialization_mod::ModelDeserializable<#model_name> for #serialized_name {
-                fn deserialize(self, registry: &mut #model_mod::PartialModRegistry) -> Result<#model_name, #serialization_mod::DeserializationError> {
-                    let #serialized_field_name = self;
-                    #(#modifiers)*
-
-                    Ok(#model_name {
-                        #(#names),*
-                    })
-                }
+                Ok(#model_name {
+                    #(#names),*
+                })
             }
         }
     };

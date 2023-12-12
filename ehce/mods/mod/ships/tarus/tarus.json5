@@ -1,0 +1,6 @@
+{
+  "type": "Ship",
+  "id": "eh:tarus",
+  "modelScale": 1.0,
+  "sprite": "Yachtm.png"
+}

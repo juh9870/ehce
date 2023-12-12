@@ -1,7 +1,7 @@
 use crate::resources::Resources;
 use bevy::prelude::Component;
-use ehce_core::database::model::fleet::FleetData;
-use ehce_core::database::model::ship_build::ShipBuildId;
+use ehce_core::database::model::fleet::Fleet;
+use ehce_core::database::model::ShipBuildId;
 use soa_derive::StructOfArray;
 
 #[derive(Debug, Component)]
@@ -9,8 +9,8 @@ pub struct CombatFleet {
     pub units: FleetUnitVec,
 }
 
-impl From<&FleetData> for CombatFleet {
-    fn from(value: &FleetData) -> Self {
+impl From<&Fleet> for CombatFleet {
+    fn from(value: &Fleet) -> Self {
         let units = value.builds.iter().map(|e| FleetUnit::new(*e)).collect();
 
         Self { units }

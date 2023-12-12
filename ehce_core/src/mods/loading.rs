@@ -1,3 +1,4 @@
+use bevy::asset::io::file::FileAssetReader;
 use bevy::asset::{LoadState, LoadedFolder, UntypedAssetId};
 use bevy::core::FrameCount;
 use bevy::prelude::*;
@@ -9,7 +10,9 @@ use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use utils::miette_ext::DiagnosticWrapper;
 
-use database::model::{DatabaseAsset, DatabaseItemKind, ModRegistry, RegistryId};
+use database::model::{
+    DatabaseAsset, DatabaseItemKind, DatabaseItemSerialized, ModRegistry, RegistryId,
+};
 
 use crate::mods::{
     HotReloading, ModData, ModHotReloadEvent, ModLoadErrorEvent, ModLoadedEvent, ModState,
@@ -18,6 +21,14 @@ use crate::mods::{
 use crate::{report_error, SimpleStateObjectPlugin};
 
 pub fn load_last_mod(mut evt: EventWriter<WantLoadModEvent>) {
+    let schema = serde_json5::to_string(&DatabaseItemSerialized::schema()).unwrap();
+    std::fs::write(
+        FileAssetReader::get_base_path()
+            .join("mods")
+            .join("$schema.json"),
+        schema,
+    )
+    .unwrap();
     evt.send(WantLoadModEvent("mod".to_string()));
 }
 
