@@ -1,4 +1,4 @@
-use crate::resources::Resources;
+use crate::variables::Variables;
 use bevy::prelude::{Bundle, Component};
 use std::hash::{Hash, Hasher};
 
@@ -36,5 +36,5 @@ impl nohash_hasher::IsEnabled for Team {}
 pub struct UnitBundle {
     pub unit: Unit,
     pub team: Team,
-    pub resources: Resources,
+    pub variables: Variables,
 }

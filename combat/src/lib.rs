@@ -22,10 +22,10 @@ use fleet::CombatFleet;
 use miette::{Diagnostic, Report};
 
 mod fleet;
-mod resources;
 mod spawning;
 mod state;
 mod unit;
+mod variables;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub enum CombatSet {

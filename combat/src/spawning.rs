@@ -1,7 +1,7 @@
 use crate::fleet::CombatFleet;
-use crate::resources::{ResourceEvaluationError, Resources};
-use crate::unit::ship::{calculate_resources, make_ship};
+use crate::unit::ship::{calculate_variables, make_ship};
 use crate::unit::{Team, Unit, UnitBundle};
+use crate::variables::{VariableEvaluationError, Variables};
 use crate::EmitCombatError;
 use bevy::log::info;
 use bevy::prelude::{Assets, Commands, Image, Query, Res, With};
@@ -39,7 +39,7 @@ pub fn ship_spawn(
             &db,
             &db.registry[*next.build],
             *team,
-            std::mem::take(next.resources),
+            std::mem::take(next.variables),
             &images,
             &mut commands,
         )?;
@@ -48,7 +48,7 @@ pub fn ship_spawn(
 
 utils::bubbled!(
     ShipSpawnError("Failed to spawn a ship") {
-        ResourceEvaluationError,
+        VariableEvaluationError,
     }
 );
 
@@ -56,17 +56,17 @@ fn spawn_ship(
     db: &ModData,
     build: impl AsRef<ShipBuild>,
     team: Team,
-    resources: Option<Resources>,
+    variables: Option<Variables>,
     images: &Assets<Image>,
     commands: &mut Commands,
 ) -> Result<(), ShipSpawnError> {
     let build = build.as_ref();
     let ship = &db.registry[build.ship];
     let ship_bundle = make_ship(db, ship, images);
-    let resources = if let Some(resources) = resources {
+    let variables = if let Some(resources) = variables {
         resources
     } else {
-        calculate_resources(db, ship, build)?
+        calculate_variables(db, ship, build)?
     };
 
     commands.spawn((
@@ -74,7 +74,7 @@ fn spawn_ship(
         UnitBundle {
             unit: Unit {},
             team,
-            resources,
+            variables,
         },
     ));
 

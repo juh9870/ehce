@@ -1,4 +1,4 @@
-use crate::resources::{ResourceEvaluationError, Resources};
+use crate::variables::{VariableEvaluationError, Variables};
 
 use bevy::math::Vec3;
 use bevy::prelude::{Assets, Bundle, Image, Sprite, SpriteBundle, Transform, Vec2};
@@ -7,11 +7,11 @@ use ehce_core::database::model::ship::Ship;
 use ehce_core::database::model::ship_build::ShipBuild;
 use ehce_core::mods::ModData;
 
-pub fn calculate_resources(
+pub fn calculate_variables(
     db: &ModData,
     ship: impl AsRef<Ship>,
     build: impl AsRef<ShipBuild>,
-) -> Result<Resources, ResourceEvaluationError> {
+) -> Result<Variables, VariableEvaluationError> {
     let build = build.as_ref();
 
     let ship = ship.as_ref();
@@ -23,7 +23,7 @@ pub fn calculate_resources(
         .chain(ship.built_in_stats.iter())
         .flat_map(|id| &db.registry[id].data.stats)
         .map(|(id, value)| (*id, *value));
-    Resources::from_stats(db, stats)
+    Variables::from_stats(db, stats)
 }
 
 pub fn make_ship(

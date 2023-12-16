@@ -2,7 +2,7 @@ use crate::model::serialization::{
     DeserializationError, DeserializationErrorStackItem, DeserializeFrom, ModelDeserializable,
     ModelDeserializableFallbackType,
 };
-use crate::model::{PartialModRegistry, ResourceId};
+use crate::model::{PartialModRegistry, VariableId};
 use exmex::{Calculate, Express};
 use itertools::Itertools;
 
@@ -16,7 +16,7 @@ pub enum SerializedFormula {
 #[derive(Debug, Clone)]
 pub struct Formula {
     pub expr: exmex::FlatEx<f64>,
-    pub args: Vec<ResourceId>,
+    pub args: Vec<VariableId>,
 }
 
 impl ModelDeserializableFallbackType for Formula {
@@ -51,7 +51,7 @@ impl ModelDeserializable<Formula> for &str {
             .var_names()
             .iter()
             .map(|id| {
-                ResourceId::deserialize_from(id.as_str(), registry).map_err(|e| {
+                VariableId::deserialize_from(id.as_str(), registry).map_err(|e| {
                     e.context(DeserializationErrorStackItem::ExprVariable(id.to_string()))
                 })
             })

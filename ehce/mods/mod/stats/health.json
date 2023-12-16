@@ -1,5 +1,5 @@
 {
-  "type": "Resource",
+  "type": "Variable",
   "id": "eh:health",
   "name": "Health"
 }

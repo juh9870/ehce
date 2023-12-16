@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 #[database_model]
 #[derive(Debug, Clone)]
-pub struct Resource {
+pub struct Variable {
     pub name: String,
     pub computed: Option<Arc<Formula>>,
     pub default: Option<Arc<Formula>>,

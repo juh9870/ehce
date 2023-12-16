@@ -1,4 +1,4 @@
-use crate::resources::Resources;
+use crate::variables::Variables;
 use bevy::prelude::Component;
 use ehce_core::database::model::fleet::Fleet;
 use ehce_core::database::model::ShipBuildId;
@@ -21,7 +21,7 @@ impl From<&Fleet> for CombatFleet {
 #[soa_derive(Debug)]
 pub struct FleetUnit {
     pub build: ShipBuildId,
-    pub resources: Option<Resources>,
+    pub variables: Option<Variables>,
     pub alive: bool,
 }
 
@@ -29,7 +29,7 @@ impl FleetUnit {
     pub fn new(build: ShipBuildId) -> Self {
         Self {
             build,
-            resources: Default::default(),
+            variables: Default::default(),
             alive: true,
         }
     }

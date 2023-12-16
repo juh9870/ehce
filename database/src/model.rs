@@ -18,9 +18,9 @@ pub mod combat_settings;
 pub mod component;
 pub mod component_stats;
 pub mod fleet;
-pub mod resource;
 pub mod ship;
 pub mod ship_build;
+pub mod variable;
 
 pub mod formula;
 
@@ -542,7 +542,7 @@ macro_rules! call_with_all_models {
             ship: $crate::model::ship::Ship,
             ship_build: $crate::model::ship_build::ShipBuild,
             component_stats: $crate::model::component_stats::ComponentStats,
-            resource: $crate::model::resource::Resource,
+            variable: $crate::model::variable::Variable,
             component: $crate::model::component::Component,
             fleet: $crate::model::fleet::Fleet,
             combat_settings: $crate::model::combat_settings::CombatSettings,
