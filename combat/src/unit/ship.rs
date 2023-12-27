@@ -21,7 +21,7 @@ pub fn calculate_variables(
         .iter()
         .map(|e| &db.registry[e.component].data.stats)
         .chain(ship.built_in_stats.iter())
-        .flat_map(|id| &db.registry[id].data.stats)
+        .flat_map(|id| &id.get(&db.registry).stats)
         .map(|(id, value)| (*id, *value));
     Variables::from_stats(db, stats)
 }

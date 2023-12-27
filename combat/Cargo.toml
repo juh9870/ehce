@@ -12,6 +12,7 @@ bevy_vector_shapes = "0.6"
 bevy_xpbd_2d = { workspace = true }
 collider_generator = { path = "../collider_generator" }
 ehce_core = { path = "../ehce_core" }
+euclid = { workspace = true }
 exmex = { workspace = true }
 itertools = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }

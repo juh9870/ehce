@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::hash::{BuildHasher, Hash};
+use std::ops::Index;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -394,5 +395,51 @@ impl<Data: ModelDeserializableFallbackType> ModelDeserializableFallbackType
 impl<Data> AsRef<Data> for RegistryEntry<Data> {
     fn as_ref(&self) -> &Data {
         &self.data
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum InlineOrId<Data> {
+    Id(SlabMapId<RegistryEntry<Data>>),
+    Inline(Data),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "camelCase")]
+#[serde(untagged)]
+pub enum InlineOrIdSerialized<DataSerialized> {
+    Id(ItemId),
+    Inline(DataSerialized),
+}
+
+impl<Data: ModelDeserializableFallbackType> ModelDeserializableFallbackType for InlineOrId<Data> {
+    type Serialized = InlineOrIdSerialized<Data::Serialized>;
+}
+
+impl<Data, DataSerialized: ModelDeserializable<Data>> ModelDeserializable<InlineOrId<Data>>
+    for InlineOrIdSerialized<DataSerialized>
+where
+    for<'a> &'a str: ModelDeserializable<SlabMapId<RegistryEntry<Data>>>,
+{
+    fn deserialize(
+        self,
+        registry: &mut PartialModRegistry,
+    ) -> Result<InlineOrId<Data>, DeserializationError> {
+        Ok(match self {
+            InlineOrIdSerialized::Id(id) => InlineOrId::Id(id.deserialize(registry)?),
+            InlineOrIdSerialized::Inline(data) => InlineOrId::Inline(data.deserialize(registry)?),
+        })
+    }
+}
+
+impl<Data> InlineOrId<Data> {
+    pub fn get<'a, Registry>(&'a self, registry: &'a Registry) -> &'a Data
+    where
+        for<'b> Registry: Index<&'b SlabMapId<RegistryEntry<Data>>, Output = RegistryEntry<Data>>,
+    {
+        match self {
+            InlineOrId::Id(id) => &registry[id].data,
+            InlineOrId::Inline(data) => data,
+        }
     }
 }

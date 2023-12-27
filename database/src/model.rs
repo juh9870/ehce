@@ -462,6 +462,7 @@ macro_rules! serialization_traits {
         paste! {
             $(
                 pub type [<$name:camel Id>] = SlabMapId<RegistryEntry<$ty>>;
+                pub type [<$name:camel OrId>] = serialization::InlineOrId<$ty>;
                 impl DatabaseItemTrait for RegistryEntry<$ty> {
                     fn id(&self) -> SlabMapUntypedId {
                         self.id.as_untyped()
