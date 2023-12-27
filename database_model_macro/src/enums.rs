@@ -18,6 +18,7 @@ pub fn process_enum(
     mut data: ItemEnum,
 ) -> Result<proc_macro::TokenStream, Error> {
     let attr = AttributeInput::from_args(attr.into())?;
+    let model_fallthrough_attrs = fallthrough(&mut data.attrs);
     let serialization_mod = serialization_mod();
     let model_mod = model_mod();
     let model_name = &data.ident;
@@ -73,6 +74,7 @@ pub fn process_enum(
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
         #[serde(rename = #model_name_str)]
         #schema_derive
+        #(#model_fallthrough_attrs)*
         pub enum #serialized_name {
             #(#variants)*
         }
