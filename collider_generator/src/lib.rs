@@ -1,4 +1,3 @@
-use crate::image_ext::ImageExt;
 use bevy::log::error;
 use bevy::prelude::Image;
 use bevy_xpbd_2d::math::Vector;
@@ -7,6 +6,8 @@ use contour::ContourBuilder;
 use geo::{Simplify, TriangulateEarcut};
 use miette::Diagnostic;
 use thiserror::Error;
+
+use crate::image_ext::ImageExt;
 
 mod image_ext;
 

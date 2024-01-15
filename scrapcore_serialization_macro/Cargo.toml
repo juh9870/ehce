@@ -1,0 +1,23 @@
+[package]
+name = "scrapcore_serialization_macro"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+attribute-derive = { workspace = true }
+convert_case = { workspace = true }
+itertools = { workspace = true }
+lazy_static = "1"
+prettyplease = "0.2"
+proc-macro-crate = "3"
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+rustc-hash = { workspace = true }
+syn = { workspace = true }
+
+[features]
+debug_output = []

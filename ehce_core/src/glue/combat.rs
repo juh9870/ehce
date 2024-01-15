@@ -1,4 +1,5 @@
 use bevy::prelude::Resource;
+
 use database::model::combat_settings::CombatSettings;
 use database::model::fleet::Fleet;
 

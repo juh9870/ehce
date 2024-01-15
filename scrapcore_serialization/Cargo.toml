@@ -1,0 +1,24 @@
+[package]
+name = "scrapcore_serialization"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy_asset = { workspace = true, optional = true }
+duplicate = { workspace = true }
+miette = { workspace = true, optional = true }
+rustc-hash = { workspace = true }
+schemars = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+slabmap = { path = "../slabmap" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+schemars = { workspace = true }
+scrapcore_serialization_macro = { path = "../scrapcore_serialization_macro", features = ["debug_output"] }
+
+[features]
+schemars = ["dep:schemars"]
+miette = ["dep:miette"]
+bevy = ["dep:bevy_asset"]

@@ -7,14 +7,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use bevy::asset::Handle;
-
 use duplicate::{duplicate, duplicate_item};
 use exmex::ExError;
 use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use utils::slab_map::{SlabMap, SlabMapDuplicateError, SlabMapId};
+use slabmap::{SlabMap, SlabMapDuplicateError, SlabMapId};
 
 use crate::model::{DatabaseItemKind, DatabaseItemTrait, ItemId, ModelKind, PartialModRegistry};
 
@@ -51,7 +50,8 @@ pub enum DeserializationErrorStackItem {
     Item(ItemId, DatabaseItemKind),
     Field(&'static str),
     Index(usize),
-    MapEntry(String), // all JSON keys are strings, so we expect deserialized value to be reasonably displayable
+    MapEntry(String),
+    // all JSON keys are strings, so we expect deserialized value to be reasonably displayable
     ExprVariable(String),
 }
 
@@ -286,17 +286,17 @@ pub(crate) trait DeserializeFrom: Sized {
 impl<T> DeserializeFrom for T {}
 
 #[duplicate_item(
-    ty trait_name err op(a,b);
-    duplicate!{
-        [
-            ty_nested;
-            [ i8 ]; [ i16 ]; [ i32 ]; [ i64 ]; [ i128 ];
-            [ u8 ]; [ u16 ]; [ u32 ]; [ u64 ]; [ u128 ];
-            [ f32 ]; [ f64 ];
-        ]
-        [ ty_nested ] [ ApplyMax ] [ ValueTooLarge ] [a > b];
-        [ ty_nested ] [ ApplyMin ] [ ValueTooSmall ] [a < b];
-    }
+ty trait_name err op(a, b);
+duplicate ! {
+[
+ty_nested;
+[ i8 ]; [ i16 ]; [ i32 ]; [ i64 ]; [ i128 ];
+[ u8 ]; [ u16 ]; [ u32 ]; [ u64 ]; [ u128 ];
+[ f32 ]; [ f64 ];
+]
+[ ty_nested ] [ ApplyMax ] [ ValueTooLarge ] [a > b];
+[ ty_nested ] [ ApplyMin ] [ ValueTooSmall ] [a < b];
+}
 )]
 impl trait_name for ty {
     type Num = ty;
@@ -371,6 +371,8 @@ where
     map.key_to_id(key)
         .map(|e| e.as_untyped().as_typed_unchecked())
 }
+
+// TODO: continue from here
 
 #[derive(Debug, Clone)]
 pub struct RegistryEntry<Data> {

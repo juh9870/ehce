@@ -1,14 +1,14 @@
+use std::sync::{Arc, Mutex};
+
 use bevy::prelude::Component;
 use bevy::utils::thiserror::Error;
-use ehce_core::database::model::formula::Formula;
-use ehce_core::database::model::{ItemId, VariableId};
 use itertools::Itertools;
 use miette::Diagnostic;
 use nohash_hasher::IntMap;
 use soa_derive::StructOfArray;
 
-use std::sync::{Arc, Mutex};
-
+use ehce_core::database::model::formula::Formula;
+use ehce_core::database::model::{ItemId, VariableId};
 use ehce_core::mods::ModData;
 
 /// Component to track entity variables

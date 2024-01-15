@@ -5,6 +5,7 @@ use std::ops::{Index, IndexMut};
 
 use bimap::BiHashMap;
 use nohash_hasher::NoHashHasher;
+#[cfg(feature = "serde")]
 use serde::Deserializer;
 use slab::Slab;
 
@@ -44,6 +45,7 @@ impl<T> Clone for SlabMapId<T> {
         *self
     }
 }
+
 impl<T> Copy for SlabMapId<T> {}
 
 impl<V> nohash_hasher::IsEnabled for SlabMapId<V> {}
@@ -62,16 +64,18 @@ impl SlabMapUntypedId {
 
     /// Performs unchecked conversion into a typed slab map ID
     ///
-    /// Indexing directly with a resulting ID might lead to panics if the
-    /// original ID did not belong to the indexed SlabMap
+    /// Indexing directly with a resulting ID results in undesired and
+    /// undocumented behavior if the original ID did not belong to the
+    /// indexed SlabMap
     pub fn as_typed_unchecked<T>(&self) -> SlabMapId<T> {
         SlabMapId::new(self.0)
     }
 
     /// Performs unchecked conversion from a raw slab index to a SlabMap key
     ///
-    /// Indexing directly with a resulting ID might lead to panics if the
-    /// original index did not belong to the indexed SlabMap
+    /// Indexing directly with a resulting ID results in undesired and
+    /// undocumented behavior if the original ID did not belong to the
+    /// indexed SlabMap
     pub fn from_raw_unchecked(value: usize) -> SlabMapUntypedId {
         SlabMapUntypedId::new(value)
     }
@@ -326,6 +330,7 @@ impl<K: Eq + Hash, V, Hasher: BuildHasher + Default> Default for SlabMap<K, V, H
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de, K: serde::Deserialize<'de>, V> serde::Deserialize<'de> for SlabMapKeyOrId<K, V> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

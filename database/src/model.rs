@@ -12,11 +12,13 @@ use rustc_hash::FxHashMap;
 use schemars::schema::RootSchema;
 use strum_macros::{Display, EnumDiscriminants, EnumIs};
 
-use utils::slab_map::{SlabMap, SlabMapId, SlabMapKeyOrUntypedId, SlabMapUntypedId};
+use serialization::RegistryEntry;
+use slabmap::{SlabMap, SlabMapId, SlabMapKeyOrUntypedId, SlabMapUntypedId};
 
 pub mod combat_settings;
 pub mod component;
 pub mod component_stats;
+pub mod device;
 pub mod fleet;
 pub mod ship;
 pub mod ship_build;
@@ -47,8 +49,8 @@ pub trait ModelKind {
 }
 
 #[duplicate_item(
-    ty;
-    [ &T ]; [ Option<T> ]; [ Vec<T> ];
+ty;
+[ & T ]; [ Option < T > ]; [ Vec < T > ];
 )]
 impl<T: ModelKind> ModelKind for ty {
     fn kind() -> DatabaseItemKind {
@@ -307,7 +309,7 @@ impl ModRegistry {
                             name: name.to_string(),
                             path_a: e.get().0.clone(),
                             path_b: path.to_path_buf(),
-                        })
+                        });
                     }
                     Entry::Vacant(e) => {
                         e.insert((path.to_path_buf(), image));
@@ -547,12 +549,11 @@ macro_rules! call_with_all_models {
             component: $crate::model::component::Component,
             fleet: $crate::model::fleet::Fleet,
             combat_settings: $crate::model::combat_settings::CombatSettings,
+            device: $crate::model::device::Device,
         );
     };
 }
 pub(crate) use call_with_all_models;
-use serialization::RegistryEntry;
-
 // registry!(ship: ship::Ship, ship_build: ship_build::ShipBuild);
 call_with_all_models!(registry_raw);
 call_with_all_models!(registry_partial);

@@ -1,5 +1,6 @@
-use crate::flags::XtaskCmd;
 use xshell::{cmd, Shell};
+
+use crate::flags::XtaskCmd;
 
 mod flags;
 
@@ -15,8 +16,16 @@ fn main() -> anyhow::Result<()> {
         }
         XtaskCmd::Fix(_) => {
             cmd!(sh, "cargo fmt --all").run()?;
-            cmd!(sh, "cargo fix --allow-dirty --allow-staged -q").run()?;
-            cmd!(sh, "cargo clippy --fix --allow-dirty --allow-staged").run()?;
+            cmd!(
+                sh,
+                "cargo fix  --all-features --allow-dirty --allow-staged -q"
+            )
+            .run()?;
+            cmd!(
+                sh,
+                "cargo clippy --fix  --all-features --allow-dirty --allow-staged"
+            )
+            .run()?;
             cmd!(sh, "cargo sort -w").run()?;
             cmd!(sh, "cargo-machete --fix --skip-target-dir").run()?;
         }

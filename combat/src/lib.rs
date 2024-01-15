@@ -1,5 +1,3 @@
-use crate::spawning::ship_spawn;
-use crate::unit::Team;
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::ecs::system::SystemParam;
 use bevy::log::Level;
@@ -12,14 +10,16 @@ use bevy_vector_shapes::prelude::*;
 use bevy_xpbd_2d::plugins::{PhysicsDebugPlugin, PhysicsPlugins};
 use bevy_xpbd_2d::prelude::PhysicsDebugConfig;
 use bevy_xpbd_2d::resources::Gravity;
+use miette::{Diagnostic, Report};
 
+use ehce_core::database::model::combat_settings::CombatSettings;
 use ehce_core::glue::combat::CombatInit;
 use ehce_core::mods::HotReloading;
 use ehce_core::GameState;
-
-use ehce_core::database::model::combat_settings::CombatSettings;
 use fleet::CombatFleet;
-use miette::{Diagnostic, Report};
+
+use crate::spawning::ship_spawn;
+use crate::unit::Team;
 
 mod fleet;
 mod signals;

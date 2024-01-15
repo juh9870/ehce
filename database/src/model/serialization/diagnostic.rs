@@ -1,8 +1,11 @@
-use super::{DeserializationErrorKind, DeserializationErrorStackItem};
-use crate::model::serialization::DeserializationError;
-use miette::Diagnostic;
 use std::fmt::{Display, Formatter};
+
+use miette::Diagnostic;
 use thiserror::Error;
+
+use crate::model::serialization::DeserializationError;
+
+use super::{DeserializationErrorKind, DeserializationErrorStackItem};
 
 #[derive(Debug)]
 enum ItemDiagnosticKind {

@@ -1,7 +1,8 @@
+use std::marker::PhantomData;
+
 use bevy::app::{App, Plugin};
 use bevy::asset::io::Reader;
 use bevy::asset::{Asset, AssetApp, AssetLoader, AsyncReadExt, BoxedFuture, LoadContext};
-use std::marker::PhantomData;
 use thiserror::Error;
 use tracing::error;
 

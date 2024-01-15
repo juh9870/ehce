@@ -1,14 +1,16 @@
+use bevy::log::info;
+use bevy::prelude::{Assets, Commands, Image, Query, Res, With};
+use bevy_mod_sysfail::sysfail;
+use nohash_hasher::IntSet;
+
+use ehce_core::database::model::ship_build::ShipBuild;
+use ehce_core::mods::ModData;
+
 use crate::fleet::CombatFleet;
 use crate::unit::ship::{calculate_variables, make_ship};
 use crate::unit::{Team, Unit, UnitBundle};
 use crate::variables::{VariableEvaluationError, Variables};
 use crate::EmitCombatError;
-use bevy::log::info;
-use bevy::prelude::{Assets, Commands, Image, Query, Res, With};
-use bevy_mod_sysfail::sysfail;
-use ehce_core::database::model::ship_build::ShipBuild;
-use ehce_core::mods::ModData;
-use nohash_hasher::IntSet;
 
 #[sysfail(EmitCombatError)]
 pub fn ship_spawn(

@@ -1,10 +1,11 @@
+use std::path::PathBuf;
+
 use bevy::app::{App, Plugin};
 use bevy::asset::{Handle, LoadedFolder};
 use bevy::prelude::{Event, First, Resource, States, SystemSet};
-use database::model::{ModRegistry, RegistryId};
-use std::path::PathBuf;
 
-use utils::slab_map::SlabMapId;
+use database::model::{ModRegistry, RegistryId};
+use slabmap::SlabMapId;
 
 use crate::mods::loading::ModLoadingPlugin;
 

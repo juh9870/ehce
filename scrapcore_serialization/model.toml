@@ -1,0 +1,7 @@
+name = "DatabaseItem"
+[singletons]
+test = "crate::test::A"
+
+[registries]
+
+[assets]

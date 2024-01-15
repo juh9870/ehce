@@ -1,6 +1,8 @@
-use crate::variables::Variables;
-use bevy::prelude::{Bundle, Component};
 use std::hash::{Hash, Hasher};
+
+use bevy::prelude::{Bundle, Component};
+
+use crate::variables::Variables;
 
 pub mod ship;
 

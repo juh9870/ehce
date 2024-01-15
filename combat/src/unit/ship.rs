@@ -1,11 +1,12 @@
-use crate::variables::{VariableEvaluationError, Variables};
-
 use bevy::math::Vec3;
 use bevy::prelude::{Assets, Bundle, Image, Sprite, SpriteBundle, Transform, Vec2};
 use bevy_xpbd_2d::prelude::{Collider, RigidBody};
+
 use ehce_core::database::model::ship::Ship;
 use ehce_core::database::model::ship_build::ShipBuild;
 use ehce_core::mods::ModData;
+
+use crate::variables::{VariableEvaluationError, Variables};
 
 pub fn calculate_variables(
     db: &ModData,

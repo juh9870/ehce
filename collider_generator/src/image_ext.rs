@@ -3,7 +3,6 @@ use bevy::math::UVec3;
 use bevy::prelude::{Color, Image};
 use bevy::render::render_resource::{TextureDimension, TextureFormat};
 use bevy::render::texture::TextureFormatPixelInfo;
-
 use thiserror::Error;
 
 pub trait ImageExt {

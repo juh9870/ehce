@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 
 use attribute_derive::Attribute;
+
 use proc_macro2::Span;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
@@ -77,10 +78,11 @@ fn serialized_type(ty: &Type) -> Result<proc_macro2::TokenStream, Error> {
 #[proc_macro_attribute]
 pub fn database_model(attr: TokenStream, input: TokenStream) -> TokenStream {
     let data: Item = parse_macro_input!(input);
+
     match match data {
         Item::Struct(data) => process_struct(attr, data),
         Item::Enum(data) => process_enum(attr, data),
-        _ => Err(Error::new(Span::call_site(), "")),
+        _ => Err(Error::new(Span::call_site(), "Invalid input")),
     } {
         Ok(data) => data,
         Err(err) => err.to_compile_error().into(),

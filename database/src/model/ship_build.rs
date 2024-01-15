@@ -1,8 +1,8 @@
-use database_model_macro::database_model;
-
-use crate::model::{ComponentId, ShipId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::model::{ComponentId, ShipId};
+use database_model_macro::database_model;
 
 #[database_model]
 #[derive(Debug, Clone)]
@@ -10,6 +10,7 @@ pub struct ShipBuild {
     pub ship: ShipId,
     pub components: Vec<InstalledComponent>,
 }
+
 #[database_model]
 #[derive(Debug, Clone)]
 pub struct InstalledComponent {

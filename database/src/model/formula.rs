@@ -1,10 +1,11 @@
+use exmex::{Calculate, Express};
+use itertools::Itertools;
+
 use crate::model::serialization::{
     DeserializationError, DeserializationErrorStackItem, DeserializeFrom, ModelDeserializable,
     ModelDeserializableFallbackType,
 };
 use crate::model::{PartialModRegistry, VariableId};
-use exmex::{Calculate, Express};
-use itertools::Itertools;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[serde(untagged)]

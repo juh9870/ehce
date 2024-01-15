@@ -1,6 +1,8 @@
-use crate::units::{ScreenVector, WorldPoint};
 use bevy::prelude::Component;
-use utils::slab_map::{SlabMap, SlabMapId};
+
+use slabmap::{SlabMap, SlabMapId};
+
+use crate::units::{ScreenVector, WorldPoint};
 
 #[derive(Debug, Clone)]
 pub enum Signal {

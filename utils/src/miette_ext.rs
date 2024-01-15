@@ -1,8 +1,8 @@
-use miette::Diagnostic;
 use std::fmt::Display;
-use thiserror::Error;
 
+use miette::Diagnostic;
 pub use paste::paste;
+use thiserror::Error;
 
 #[macro_export]
 macro_rules! _bubbled_impl {
@@ -96,5 +96,6 @@ mod sealed {
     use miette::Diagnostic;
 
     pub trait Sealed {}
+
     impl<T: Diagnostic> Sealed for T {}
 }

@@ -1,18 +1,19 @@
+use std::any::TypeId;
+use std::ops::DerefMut;
+use std::path::{Path, PathBuf};
+
 use bevy::asset::io::file::FileAssetReader;
 use bevy::asset::{LoadState, LoadedFolder, UntypedAssetId};
 use bevy::core::FrameCount;
 use bevy::prelude::*;
-use database::call_with_all_models;
 use miette::Diagnostic;
 use rustc_hash::FxHashSet;
-use std::any::TypeId;
-use std::ops::DerefMut;
-use std::path::{Path, PathBuf};
-use utils::miette_ext::DiagnosticWrapper;
 
+use database::call_with_all_models;
 use database::model::{
     DatabaseAsset, DatabaseItemKind, DatabaseItemSerialized, ModRegistry, RegistryId,
 };
+use utils::miette_ext::DiagnosticWrapper;
 
 use crate::mods::{
     HotReloading, ModData, ModHotReloadEvent, ModLoadErrorEvent, ModLoadedEvent, ModState,
@@ -77,7 +78,9 @@ fn loading_initializer(
     mut commands: Commands,
     mut next_state: ResMut<NextState<ModState>>,
 ) {
-    let Some(evt) = evt.read().last() else { return };
+    let Some(evt) = evt.read().last() else {
+        return;
+    };
     let mod_folder = asset_server.load_folder(&evt.0);
     commands.insert_resource(LoadingStateData {
         name: evt.0.clone(),

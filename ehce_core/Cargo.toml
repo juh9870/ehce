@@ -12,6 +12,7 @@ paste = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true }
 serde_json5 = { workspace = true }
+slabmap = { path = "../slabmap" }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 utils = { path = "../utils" }

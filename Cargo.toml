@@ -7,13 +7,17 @@ members = [
     "database_model_macro",
     "ehce",
     "ehce_core",
+    "scrapcore_serialization",
+    "scrapcore_serialization_macro",
+    "slabmap"
+,
     "utils",
-    "xtask",
-]
+    "xtask"]
 
 [workspace.dependencies]
 attribute-derive = "0.6"
 bevy = { version = "0.12.1", default-features = false }
+bevy_asset = "0.12.1"
 bevy-inspector-egui = "0.21"
 bevy_common_assets = "0.8"
 bevy_mod_sysfail = { git = "https://github.com/nicopap/bevy_mod_sysfail.git", branch = "trait-failure" }
@@ -48,6 +52,7 @@ strum = "0.25"
 strum_macros = "0.25"
 syn = "2.0"
 thiserror = "1"
+toml = "0.8"
 tracing = "0.1"
 
 [profile.release]

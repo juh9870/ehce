@@ -1,8 +1,10 @@
-use crate::variables::Variables;
 use bevy::prelude::Component;
+use soa_derive::StructOfArray;
+
 use ehce_core::database::model::fleet::Fleet;
 use ehce_core::database::model::ShipBuildId;
-use soa_derive::StructOfArray;
+
+use crate::variables::Variables;
 
 #[derive(Debug, Component)]
 pub struct CombatFleet {
