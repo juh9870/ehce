@@ -1,6 +1,6 @@
 use crate::registry::entry::RegistryEntrySerialized;
 use crate::registry::{
-    AssetsHolder, PartialRegistryHolder, PartialSingletonHolder, SerializationRegistry,
+    AssetsHolder, PartialRegistryHolder, PartialSingletonHolder, SerializationHub,
 };
 use crate::serialization::error::{
     DeserializationError, DeserializationErrorKind, DeserializationErrorStackItem,
@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 use std::path::PathBuf;
 
 pub fn registry_insert<
-    Registry: SerializationRegistry + PartialRegistryHolder<T>,
+    Registry: SerializationHub + PartialRegistryHolder<T>,
     T: SerializationFallback,
 >(
     registry: &mut Registry,
@@ -38,7 +38,7 @@ pub fn registry_insert<
 }
 
 pub fn singleton_insert<
-    Registry: SerializationRegistry + PartialSingletonHolder<T>,
+    Registry: SerializationHub + PartialSingletonHolder<T>,
     T: SerializationFallback,
 >(
     registry: &mut Registry,
@@ -65,7 +65,7 @@ pub fn singleton_insert<
     Ok(())
 }
 
-pub fn asset_insert<Registry: SerializationRegistry + AssetsHolder<T>, T>(
+pub fn asset_insert<Registry: SerializationHub + AssetsHolder<T>, T>(
     registry: &mut Registry,
     path: PathBuf,
     item: T,

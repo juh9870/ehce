@@ -1,5 +1,5 @@
 use crate::registry::entry::{RegistryEntry, RegistryEntrySerialized};
-use crate::registry::{PartialRegistryHolder, SerializationRegistry};
+use crate::registry::{PartialRegistryHolder, SerializationHub};
 use crate::reservation::{get_reserved_key, insert_reserved, reserve};
 use crate::serialization::error::{
     DeserializationError, DeserializationErrorKind, DeserializationErrorStackItem,
@@ -25,11 +25,11 @@ pub trait SerializationFallback {
     type Fallback;
 }
 
-pub trait DeserializeModel<T, Registry: SerializationRegistry> {
+pub trait DeserializeModel<T, Registry: SerializationHub> {
     fn deserialize(self, registry: &mut Registry) -> Result<T, DeserializationError<Registry>>;
 }
 
-impl<Registry: SerializationRegistry, T: DeserializeModel<R, Registry>, R>
+impl<Registry: SerializationHub, T: DeserializeModel<R, Registry>, R>
     DeserializeModel<Option<R>, Registry> for Option<T>
 {
     fn deserialize(
@@ -46,7 +46,7 @@ impl<T: SerializationFallback> SerializationFallback for Option<T> {
 
 // region Vec
 
-impl<Registry: SerializationRegistry, T: DeserializeModel<R, Registry>, R>
+impl<Registry: SerializationHub, T: DeserializeModel<R, Registry>, R>
     DeserializeModel<Vec<R>, Registry> for Vec<T>
 {
     #[inline]
@@ -73,7 +73,7 @@ impl<T: SerializationFallback> SerializationFallback for Vec<T> {
 // region HashMap
 
 impl<
-        Registry: SerializationRegistry,
+        Registry: SerializationHub,
         RawKey: DeserializeModel<Key, Registry> + Eq + Hash + Display,
         Key: Eq + Hash,
         RawValue: DeserializeModel<Value, Registry>,
@@ -114,7 +114,7 @@ impl<Item> SerializationFallback for SlabMapId<Item> {
     type Fallback = ItemId;
 }
 
-impl<Registry: SerializationRegistry, T> DeserializeModel<T, Registry> for String
+impl<Registry: SerializationHub, T> DeserializeModel<T, Registry> for String
 where
     for<'a> &'a str: DeserializeModel<T, Registry>,
 {
@@ -123,11 +123,8 @@ where
     }
 }
 
-impl<
-        'a,
-        Registry: SerializationRegistry + PartialRegistryHolder<Data>,
-        Data: SerializationFallback,
-    > DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry> for ItemIdRef<'a>
+impl<'a, Registry: SerializationHub + PartialRegistryHolder<Data>, Data: SerializationFallback>
+    DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry> for ItemIdRef<'a>
 where
     Data::Fallback: DeserializeModel<Data, Registry>,
 {
@@ -150,10 +147,8 @@ where
     }
 }
 
-impl<
-        Registry: SerializationRegistry + PartialRegistryHolder<Data>,
-        Data: SerializationFallback,
-    > DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry>
+impl<Registry: SerializationHub + PartialRegistryHolder<Data>, Data: SerializationFallback>
+    DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry>
     for RegistryEntrySerialized<Data::Fallback>
 where
     Data::Fallback: DeserializeModel<Data, Registry>,

@@ -15,19 +15,19 @@ pub mod inline;
 pub mod insert;
 pub mod kind;
 
-pub trait RegistryHolder<Value>: SerializationRegistry + ItemKindProvider<Value> {
+pub trait RegistryHolder<Value>: SerializationHub + ItemKindProvider<Value> {
     fn get_registry(&self) -> &SlabMap<ItemId, RegistryEntry<Value>>;
     fn get_registry_mut(&mut self) -> &mut SlabMap<ItemId, RegistryEntry<Value>>;
 }
 
-pub trait SingletonHolder<Value>: SerializationRegistry + ItemKindProvider<Value> {
+pub trait SingletonHolder<Value>: SerializationHub + ItemKindProvider<Value> {
     fn get_singleton(&self) -> &Value;
     fn get_singleton_mut(&mut self) -> &mut Value;
 }
 
 /// Trait for "partial" registries used during deserialization
 pub trait PartialRegistryHolder<Value: SerializationFallback>:
-    SerializationRegistry + ItemKindProvider<Value>
+    SerializationHub + ItemKindProvider<Value>
 {
     fn get_registry(&mut self) -> &mut SlabMap<ItemId, Option<RegistryEntry<Value>>>;
     fn get_raw_registry(
@@ -37,18 +37,18 @@ pub trait PartialRegistryHolder<Value: SerializationFallback>:
 
 /// Trait for "partial" registries used during deserialization
 pub trait PartialSingletonHolder<Value: SerializationFallback>:
-    SerializationRegistry + ItemKindProvider<Value>
+    SerializationHub + ItemKindProvider<Value>
 {
     // &mut Option usage is intentional so None can be replaced with Some
     fn get_singleton(&mut self) -> &mut Option<(PathBuf, Value::Fallback)>;
 }
 
-pub trait AssetsHolder<Value>: SerializationRegistry + AssetKindProvider<Value> {
+pub trait AssetsHolder<Value>: SerializationHub + AssetKindProvider<Value> {
     fn get_assets(&self) -> &FxHashMap<AssetName, (Value, PathBuf)>;
     fn get_assets_mut(&mut self) -> &mut FxHashMap<AssetName, (Value, PathBuf)>;
 }
 
-pub trait SerializationRegistry: Debug {
+pub trait SerializationHub: Debug {
     /// Type indicating kind of registry or singleton items
     type ItemKind: Debug + Clone + Display;
 

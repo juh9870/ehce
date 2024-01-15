@@ -1,6 +1,6 @@
 use crate::registry::entry::RegistryEntry;
 use crate::registry::index::RegistryIndex;
-use crate::registry::{RegistryHolder, SerializationRegistry};
+use crate::registry::{RegistryHolder, SerializationHub};
 use crate::serialization::error::DeserializationError;
 use crate::serialization::{DeserializeModel, SerializationFallback};
 use crate::ItemId;
@@ -25,7 +25,7 @@ impl<Data: SerializationFallback> SerializationFallback for InlineOrId<Data> {
     type Fallback = InlineOrIdSerialized<Data::Fallback>;
 }
 
-impl<Registry: SerializationRegistry, Data, DataSerialized: DeserializeModel<Data, Registry>>
+impl<Registry: SerializationHub, Data, DataSerialized: DeserializeModel<Data, Registry>>
     DeserializeModel<InlineOrId<Data>, Registry> for InlineOrIdSerialized<DataSerialized>
 where
     for<'a> &'a str: DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry>,
@@ -42,7 +42,7 @@ where
 }
 
 impl<Data> RegistryIndex<Data> for InlineOrId<Data> {
-    fn get<'a, Registry: SerializationRegistry + RegistryHolder<Data>>(
+    fn get<'a, Registry: SerializationHub + RegistryHolder<Data>>(
         &'a self,
         registry: &'a Registry,
     ) -> &'a Data {

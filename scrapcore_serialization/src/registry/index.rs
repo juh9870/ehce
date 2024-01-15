@@ -1,16 +1,16 @@
 use crate::registry::entry::RegistryEntry;
-use crate::registry::{RegistryHolder, SerializationRegistry};
+use crate::registry::{RegistryHolder, SerializationHub};
 use slabmap::SlabMapId;
 
 pub trait RegistryIndex<Data> {
-    fn get<'a, Registry: SerializationRegistry + RegistryHolder<Data>>(
+    fn get<'a, Registry: SerializationHub + RegistryHolder<Data>>(
         &'a self,
         registry: &'a Registry,
     ) -> &'a Data;
 }
 
 impl<Data> RegistryIndex<Data> for SlabMapId<RegistryEntry<Data>> {
-    fn get<'a, Registry: SerializationRegistry + RegistryHolder<Data>>(
+    fn get<'a, Registry: SerializationHub + RegistryHolder<Data>>(
         &'a self,
         registry: &'a Registry,
     ) -> &'a Data {
@@ -19,7 +19,7 @@ impl<Data> RegistryIndex<Data> for SlabMapId<RegistryEntry<Data>> {
 }
 
 impl<Data> RegistryIndex<Data> for Data {
-    fn get<'a, Registry: SerializationRegistry + RegistryHolder<Data>>(
+    fn get<'a, Registry: SerializationHub + RegistryHolder<Data>>(
         &'a self,
         _registry: &'a Registry,
     ) -> &'a Data {

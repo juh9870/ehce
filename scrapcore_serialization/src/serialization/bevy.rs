@@ -1,4 +1,4 @@
-use crate::registry::{AssetsHolder, SerializationRegistry};
+use crate::registry::{AssetsHolder, SerializationHub};
 use crate::serialization::error::{DeserializationError, DeserializationErrorKind};
 use crate::serialization::{DeserializeModel, SerializationFallback};
 use crate::{AssetName, AssetNameRef};
@@ -8,7 +8,7 @@ use bevy_asset::{Asset, Handle};
 ///
 /// Fields are populated with WEAK handles to the asset
 /// Currently there is no way to request a strong handle
-impl<'a, Registry: SerializationRegistry, A: Asset> DeserializeModel<Handle<A>, Registry>
+impl<'a, Registry: SerializationHub, A: Asset> DeserializeModel<Handle<A>, Registry>
     for AssetNameRef<'a>
 where
     Registry: AssetsHolder<Handle<A>>,
