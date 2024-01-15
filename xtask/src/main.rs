@@ -12,7 +12,8 @@ fn main() -> anyhow::Result<()> {
             cmd!(sh, "cargo lrun -p ehce --features bevy/dynamic_linking").run()?;
         }
         XtaskCmd::Watch(_) => {
-            cmd!(sh, "cargo watch -x lcheck").run()?;
+            let check = "lcheck --all-features";
+            cmd!(sh, "cargo watch -x {check}").run()?;
         }
         XtaskCmd::Fix(_) => {
             cmd!(sh, "cargo fmt --all").run()?;
