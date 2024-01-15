@@ -1,5 +1,5 @@
 use crate::registry::entry::{RegistryEntry, RegistryEntrySerialized};
-use crate::registry::{ItemKindProvider, PartialRegistryHolder, SerializationRegistry};
+use crate::registry::{PartialRegistryHolder, SerializationRegistry};
 use crate::reservation::{get_reserved_key, insert_reserved, reserve};
 use crate::serialization::error::{
     DeserializationError, DeserializationErrorKind, DeserializationErrorStackItem,
@@ -125,7 +125,7 @@ where
 
 impl<
         'a,
-        Registry: SerializationRegistry + PartialRegistryHolder<Data> + ItemKindProvider<Data>,
+        Registry: SerializationRegistry + PartialRegistryHolder<Data>,
         Data: SerializationFallback,
     > DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry> for ItemIdRef<'a>
 where
@@ -146,12 +146,12 @@ where
             )
             .into());
         };
-        other.deserialize(registry)
+        other.0.deserialize(registry)
     }
 }
 
 impl<
-        Registry: SerializationRegistry + PartialRegistryHolder<Data> + ItemKindProvider<Data>,
+        Registry: SerializationRegistry + PartialRegistryHolder<Data>,
         Data: SerializationFallback,
     > DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry>
     for RegistryEntrySerialized<Data::Fallback>
@@ -166,7 +166,7 @@ where
         let reserved = reserve(items, self.id.clone())?;
         let data =
             DeserializeModel::<Data, Registry>::deserialize(self.data, registry).map_err(|e| {
-                e.context(DeserializationErrorStackItem::Item(
+                e.context(DeserializationErrorStackItem::ItemById(
                     self.id,
                     Registry::kind(),
                 ))

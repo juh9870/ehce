@@ -1,4 +1,4 @@
-use crate::registry::{AssetKindProvider, AssetsHolder, SerializationRegistry};
+use crate::registry::{AssetsHolder, SerializationRegistry};
 use crate::serialization::error::{DeserializationError, DeserializationErrorKind};
 use crate::serialization::{DeserializeModel, SerializationFallback};
 use crate::{AssetName, AssetNameRef};
@@ -11,7 +11,7 @@ use bevy_asset::{Asset, Handle};
 impl<'a, Registry: SerializationRegistry, A: Asset> DeserializeModel<Handle<A>, Registry>
     for AssetNameRef<'a>
 where
-    Registry: AssetsHolder<Handle<A>> + AssetKindProvider<Handle<A>>,
+    Registry: AssetsHolder<Handle<A>>,
 {
     fn deserialize(
         self,
@@ -19,7 +19,7 @@ where
     ) -> Result<Handle<A>, DeserializationError<Registry>> {
         let name = self.to_ascii_lowercase();
         if let Some(handle) = registry.get_assets().get(&name) {
-            Ok(handle.clone_weak())
+            Ok(handle.0.clone_weak())
         } else {
             Err(DeserializationErrorKind::MissingAsset(name, Registry::asset_kind()).into())
         }
