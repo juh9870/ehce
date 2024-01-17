@@ -1,8 +1,8 @@
-use crate::registry::SerializationHub;
+use crate::registry::SerializationRegistry;
 use crate::serialization::error::DeserializationError;
 use crate::serialization::DeserializeModel;
 
-pub trait DeserializeFrom<Registry: SerializationHub>: Sized {
+pub trait DeserializeFrom<Registry: SerializationRegistry>: Sized {
     fn deserialize_from<U>(
         data: U,
         registry: &mut Registry,
@@ -14,4 +14,4 @@ pub trait DeserializeFrom<Registry: SerializationHub>: Sized {
     }
 }
 
-impl<Registry: SerializationHub, T> DeserializeFrom<Registry> for T {}
+impl<Registry: SerializationRegistry, T> DeserializeFrom<Registry> for T {}

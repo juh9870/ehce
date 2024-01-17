@@ -1,5 +1,5 @@
 use crate::registry::kind::ItemKindProvider;
-use crate::registry::SerializationHub;
+use crate::registry::SerializationRegistry;
 use crate::{AssetName, ItemId};
 use slabmap::SlabMapDuplicateError;
 use std::fmt::{Display, Formatter};
@@ -10,7 +10,7 @@ use thiserror::Error;
 mod diagnostic;
 
 #[derive(Debug, Error, Clone)]
-pub enum DeserializationErrorKind<Registry: SerializationHub> {
+pub enum DeserializationErrorKind<Registry: SerializationRegistry> {
     #[error("Item {}({}) is missing", .1, .0)]
     MissingItem(ItemId, Registry::ItemKind),
     #[error("Item {}({}) is declared twice, in `{}` and `{}`", .kind, .id, .path_a.to_string_lossy(), .path_b.to_string_lossy())]
@@ -49,14 +49,14 @@ pub enum DeserializationErrorKind<Registry: SerializationHub> {
     Custom(Registry::Error),
 }
 
-impl<Registry: SerializationHub> DeserializationErrorKind<Registry> {
+impl<Registry: SerializationRegistry> DeserializationErrorKind<Registry> {
     pub fn into_err(self) -> DeserializationError<Registry> {
         self.into()
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum DeserializationErrorStackItem<Registry: SerializationHub> {
+pub enum DeserializationErrorStackItem<Registry: SerializationRegistry> {
     ItemByPath(PathBuf, Registry::ItemKind),
     ItemById(ItemId, Registry::ItemKind),
     Field(&'static str),
@@ -67,7 +67,7 @@ pub enum DeserializationErrorStackItem<Registry: SerializationHub> {
     ExprVariable(String),
 }
 
-impl<Registry: SerializationHub> Display for DeserializationErrorStackItem<Registry> {
+impl<Registry: SerializationRegistry> Display for DeserializationErrorStackItem<Registry> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             DeserializationErrorStackItem::ItemByPath(path, kind) => {
@@ -93,12 +93,12 @@ impl<Registry: SerializationHub> Display for DeserializationErrorStackItem<Regis
 
 #[derive(Debug, Error, Clone)]
 #[cfg_attr(feature = "miette", derive(miette::Diagnostic))]
-pub struct DeserializationError<Registry: SerializationHub> {
+pub struct DeserializationError<Registry: SerializationRegistry> {
     pub kind: DeserializationErrorKind<Registry>,
     pub stack: Vec<DeserializationErrorStackItem<Registry>>,
 }
 
-impl<Registry: SerializationHub> Display for DeserializationError<Registry> {
+impl<Registry: SerializationRegistry> Display for DeserializationError<Registry> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.kind)?;
         for item in &self.stack {
@@ -108,14 +108,14 @@ impl<Registry: SerializationHub> Display for DeserializationError<Registry> {
     }
 }
 
-impl<Registry: SerializationHub> DeserializationError<Registry> {
+impl<Registry: SerializationRegistry> DeserializationError<Registry> {
     pub fn context(mut self, item: DeserializationErrorStackItem<Registry>) -> Self {
         self.stack.push(item);
         self
     }
 }
 
-impl<Registry: SerializationHub> From<DeserializationErrorKind<Registry>>
+impl<Registry: SerializationRegistry> From<DeserializationErrorKind<Registry>>
     for DeserializationError<Registry>
 {
     fn from(value: DeserializationErrorKind<Registry>) -> Self {
@@ -132,7 +132,7 @@ impl<Registry: SerializationHub> From<DeserializationErrorKind<Registry>>
 //     }
 // }
 
-impl<T, Registry: SerializationHub> From<SlabMapDuplicateError<ItemId, T>>
+impl<T, Registry: SerializationRegistry> From<SlabMapDuplicateError<ItemId, T>>
     for DeserializationError<Registry>
 where
     Registry: ItemKindProvider<T>,

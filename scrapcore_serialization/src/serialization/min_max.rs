@@ -1,13 +1,13 @@
-use crate::registry::SerializationHub;
+use crate::registry::SerializationRegistry;
 use crate::serialization::error::{DeserializationError, DeserializationErrorKind};
 use duplicate::duplicate_item;
 
-pub(crate) trait ApplyMin<Registry: SerializationHub>: Sized {
+pub(crate) trait ApplyMin<Registry: SerializationRegistry>: Sized {
     type Num;
     fn apply(self, min: Self::Num) -> Result<Self, DeserializationError<Registry>>;
 }
 
-pub(crate) trait ApplyMax<Registry: SerializationHub>: Sized {
+pub(crate) trait ApplyMax<Registry: SerializationRegistry>: Sized {
     type Num;
     fn apply(self, max: Self::Num) -> Result<Self, DeserializationError<Registry>>;
 }
@@ -25,7 +25,7 @@ ty_nested;
 [ ty_nested ] [ ApplyMin ] [ ValueTooSmall ] [a < b];
 }
 )]
-impl<Registry: SerializationHub> trait_name<Registry> for ty {
+impl<Registry: SerializationRegistry> trait_name<Registry> for ty {
     type Num = ty;
 
     fn apply(self, limit: Self::Num) -> Result<Self, DeserializationError<Registry>> {
@@ -41,7 +41,7 @@ impl<Registry: SerializationHub> trait_name<Registry> for ty {
     }
 }
 
-impl<Registry: SerializationHub, T: ApplyMin<Registry>> ApplyMin<Registry> for Option<T> {
+impl<Registry: SerializationRegistry, T: ApplyMin<Registry>> ApplyMin<Registry> for Option<T> {
     type Num = T::Num;
 
     fn apply(self, min: Self::Num) -> Result<Self, DeserializationError<Registry>> {
@@ -49,7 +49,7 @@ impl<Registry: SerializationHub, T: ApplyMin<Registry>> ApplyMin<Registry> for O
     }
 }
 
-impl<Registry: SerializationHub, T: ApplyMax<Registry>> ApplyMax<Registry> for Option<T> {
+impl<Registry: SerializationRegistry, T: ApplyMax<Registry>> ApplyMax<Registry> for Option<T> {
     type Num = T::Num;
 
     fn apply(self, max: Self::Num) -> Result<Self, DeserializationError<Registry>> {

@@ -1,7 +1,7 @@
 use crate::registry::entry::RegistryEntry;
-use crate::registry::SerializationHub;
+use crate::registry::SerializationRegistry;
 
-pub trait ItemKindProvider<Item>: SerializationHub {
+pub trait ItemKindProvider<Item>: SerializationRegistry {
     fn kind() -> Self::ItemKind;
 }
 
@@ -17,7 +17,7 @@ impl<Registry: ItemKindProvider<T>, T> ItemKindProvider<RegistryEntry<T>> for Re
     }
 }
 
-pub trait AssetKindProvider<Asset>: SerializationHub {
+pub trait AssetKindProvider<Asset>: SerializationRegistry {
     fn asset_kind() -> Self::AssetKind;
 }
 

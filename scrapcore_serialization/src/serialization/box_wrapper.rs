@@ -1,4 +1,4 @@
-use crate::registry::SerializationHub;
+use crate::registry::SerializationRegistry;
 use crate::serialization::error::DeserializationError;
 use crate::serialization::{DeserializeModel, SerializationFallback};
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,7 @@ impl<T: SerializationFallback> SerializationFallback for Arc<T> {
     type Fallback = SerializationBoxingWrapper<T::Fallback>;
 }
 
-impl<Registry: SerializationHub, T: DeserializeModel<R, Registry>, R>
+impl<Registry: SerializationRegistry, T: DeserializeModel<R, Registry>, R>
     DeserializeModel<Arc<R>, Registry> for SerializationBoxingWrapper<T>
 {
     #[inline(always)]
@@ -28,7 +28,7 @@ impl<T: SerializationFallback> SerializationFallback for Box<T> {
     type Fallback = SerializationBoxingWrapper<T::Fallback>;
 }
 
-impl<Registry: SerializationHub, T: DeserializeModel<R, Registry>, R>
+impl<Registry: SerializationRegistry, T: DeserializeModel<R, Registry>, R>
     DeserializeModel<Box<R>, Registry> for SerializationBoxingWrapper<T>
 {
     #[inline(always)]

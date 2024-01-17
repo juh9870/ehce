@@ -1,5 +1,5 @@
 use crate::registry::entry::{RegistryEntry, RegistryEntrySerialized};
-use crate::registry::{PartialRegistryHolder, SerializationHub};
+use crate::registry::{PartialCollectionHolder, SerializationRegistry};
 use crate::reservation::{get_reserved_key, insert_reserved, reserve};
 use crate::serialization::error::{
     DeserializationError, DeserializationErrorKind, DeserializationErrorStackItem,
@@ -25,11 +25,11 @@ pub trait SerializationFallback {
     type Fallback;
 }
 
-pub trait DeserializeModel<T, Registry: SerializationHub> {
+pub trait DeserializeModel<T, Registry: SerializationRegistry> {
     fn deserialize(self, registry: &mut Registry) -> Result<T, DeserializationError<Registry>>;
 }
 
-impl<Registry: SerializationHub, T: DeserializeModel<R, Registry>, R>
+impl<Registry: SerializationRegistry, T: DeserializeModel<R, Registry>, R>
     DeserializeModel<Option<R>, Registry> for Option<T>
 {
     fn deserialize(
@@ -46,7 +46,7 @@ impl<T: SerializationFallback> SerializationFallback for Option<T> {
 
 // region Vec
 
-impl<Registry: SerializationHub, T: DeserializeModel<R, Registry>, R>
+impl<Registry: SerializationRegistry, T: DeserializeModel<R, Registry>, R>
     DeserializeModel<Vec<R>, Registry> for Vec<T>
 {
     #[inline]
@@ -73,7 +73,7 @@ impl<T: SerializationFallback> SerializationFallback for Vec<T> {
 // region HashMap
 
 impl<
-        Registry: SerializationHub,
+        Registry: SerializationRegistry,
         RawKey: DeserializeModel<Key, Registry> + Eq + Hash + Display,
         Key: Eq + Hash,
         RawValue: DeserializeModel<Value, Registry>,
@@ -114,7 +114,7 @@ impl<Item> SerializationFallback for SlabMapId<Item> {
     type Fallback = ItemId;
 }
 
-impl<Registry: SerializationHub, T> DeserializeModel<T, Registry> for String
+impl<Registry: SerializationRegistry, T> DeserializeModel<T, Registry> for String
 where
     for<'a> &'a str: DeserializeModel<T, Registry>,
 {
@@ -123,8 +123,11 @@ where
     }
 }
 
-impl<'a, Registry: SerializationHub + PartialRegistryHolder<Data>, Data: SerializationFallback>
-    DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry> for ItemIdRef<'a>
+impl<
+        'a,
+        Registry: SerializationRegistry + PartialCollectionHolder<Data>,
+        Data: SerializationFallback,
+    > DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry> for ItemIdRef<'a>
 where
     Data::Fallback: DeserializeModel<Data, Registry>,
 {
@@ -132,11 +135,11 @@ where
         self,
         registry: &mut Registry,
     ) -> Result<SlabMapId<RegistryEntry<Data>>, DeserializationError<Registry>> {
-        let items = registry.get_registry();
+        let items = registry.get_collection();
         if let Some(id) = get_reserved_key(items, self) {
             return Ok(id);
         }
-        let Some(other) = registry.get_raw_registry().remove(self) else {
+        let Some(other) = registry.get_raw_collection().remove(self) else {
             return Err(DeserializationErrorKind::<Registry>::MissingItem(
                 self.to_string(),
                 Registry::kind(),
@@ -147,8 +150,10 @@ where
     }
 }
 
-impl<Registry: SerializationHub + PartialRegistryHolder<Data>, Data: SerializationFallback>
-    DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry>
+impl<
+        Registry: SerializationRegistry + PartialCollectionHolder<Data>,
+        Data: SerializationFallback,
+    > DeserializeModel<SlabMapId<RegistryEntry<Data>>, Registry>
     for RegistryEntrySerialized<Data::Fallback>
 where
     Data::Fallback: DeserializeModel<Data, Registry>,
@@ -157,7 +162,7 @@ where
         self,
         registry: &mut Registry,
     ) -> Result<SlabMapId<RegistryEntry<Data>>, DeserializationError<Registry>> {
-        let items = registry.get_registry();
+        let items = registry.get_collection();
         let reserved = reserve(items, self.id.clone())?;
         let data =
             DeserializeModel::<Data, Registry>::deserialize(self.data, registry).map_err(|e| {
@@ -169,7 +174,7 @@ where
         let id = reserved.raw();
         let model = RegistryEntry { id, data };
 
-        let items = registry.get_registry();
+        let items = registry.get_collection();
         let id = insert_reserved(items, reserved, model);
 
         Ok(id)

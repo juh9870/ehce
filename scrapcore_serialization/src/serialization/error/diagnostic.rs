@@ -1,18 +1,18 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::registry::SerializationHub;
+use crate::registry::SerializationRegistry;
 use miette::Diagnostic;
 
 use super::{DeserializationError, DeserializationErrorKind, DeserializationErrorStackItem};
 
 #[derive(Debug)]
-enum ItemDiagnosticKind<Registry: SerializationHub> {
+enum ItemDiagnosticKind<Registry: SerializationRegistry> {
     Path(DeserializationErrorStackItem<Registry>),
     Cause(DeserializationErrorKind<Registry>),
 }
 
-impl<Registry: SerializationHub> Display for ItemDiagnosticKind<Registry> {
+impl<Registry: SerializationRegistry> Display for ItemDiagnosticKind<Registry> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self {
             ItemDiagnosticKind::Path(path) => match path {
@@ -45,12 +45,12 @@ impl<Registry: SerializationHub> Display for ItemDiagnosticKind<Registry> {
     }
 }
 
-struct ItemDiagnostic<Registry: SerializationHub>(
+struct ItemDiagnostic<Registry: SerializationRegistry>(
     ItemDiagnosticKind<Registry>,
     Option<Box<ItemDiagnostic<Registry>>>,
 );
 
-impl<Registry: SerializationHub + Debug> Debug for ItemDiagnostic<Registry> {
+impl<Registry: SerializationRegistry + Debug> Debug for ItemDiagnostic<Registry> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("ItemDiagnostic")
             .field(&self.0)
@@ -59,20 +59,20 @@ impl<Registry: SerializationHub + Debug> Debug for ItemDiagnostic<Registry> {
     }
 }
 
-impl<Registry: SerializationHub> Display for ItemDiagnostic<Registry> {
+impl<Registry: SerializationRegistry> Display for ItemDiagnostic<Registry> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
-impl<Registry: SerializationHub + Debug> Error for ItemDiagnostic<Registry> {}
+impl<Registry: SerializationRegistry + Debug> Error for ItemDiagnostic<Registry> {}
 
-impl<Registry: SerializationHub + Debug> Diagnostic for ItemDiagnostic<Registry> {
+impl<Registry: SerializationRegistry + Debug> Diagnostic for ItemDiagnostic<Registry> {
     fn diagnostic_source(&self) -> Option<&dyn Diagnostic> {
         self.1.as_ref().map(|e| e.as_ref() as &dyn Diagnostic)
     }
 }
 
-impl<Registry: SerializationHub> DeserializationError<Registry> {
+impl<Registry: SerializationRegistry> DeserializationError<Registry> {
     pub fn diagnostic(self) -> impl Diagnostic {
         self.stack.into_iter().fold(
             ItemDiagnostic(ItemDiagnosticKind::Cause(self.kind), None),
