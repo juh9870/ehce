@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use proc_macro2::Span;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, Error, Item, Meta, Type};
+use syn::{parse_macro_input, parse_str, Error, Item, Meta, Type};
 
 use crate::enums::process_enum;
 use crate::registry::registry_impl;
@@ -27,14 +27,24 @@ fn model_mod() -> proc_macro2::TokenStream {
 #[derive(Debug)]
 struct IdentSync(String);
 
+impl IdentSync {
+    fn join(&self, path: &str) -> IdentSync {
+        IdentSync(format!("{}::{}", self.0, path))
+    }
+}
+
 impl ToTokens for IdentSync {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        proc_macro2::Ident::new(&self.0, Span::call_site()).to_tokens(tokens)
+        let ty: syn::Type = parse_str(&self.0).unwrap();
+        // proc_macro2::Ident::new(&self.0, Span::call_site()).to_tokens(tokens)
+        ty.to_tokens(tokens)
     }
 }
 
 lazy_static! {
     static ref SERIALIZATION_CRATE: IdentSync = crate_name("scrapcore_serialization");
+    static ref MOD_REGISTRY: IdentSync = SERIALIZATION_CRATE.join("registry");
+    static ref MOD_SERIALIZATION: IdentSync = SERIALIZATION_CRATE.join("serialization");
 }
 fn crate_name(name: &str) -> IdentSync {
     match proc_macro_crate::crate_name(name) {

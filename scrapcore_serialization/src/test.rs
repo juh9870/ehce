@@ -14,6 +14,6 @@ struct ASerialzied {}
 
 #[registry]
 struct Model {
-    #[model(registry)]
+    #[model(collection)]
     test: A,
 }
